@@ -1,0 +1,8 @@
+/target
+Cargo.lock
+.idea/
+.vscode/
+build/
+dist/
+fastfuzzy.egg-info/
+fastfuzzy.iml
