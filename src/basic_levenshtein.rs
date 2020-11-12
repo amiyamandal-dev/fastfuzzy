@@ -6,21 +6,21 @@ use ngrams::Ngram;
 use pyo3::prelude::*;
 use pyo3::types::{PyList, PyString};
 use pyo3::wrap_pyfunction;
-use strsim::{damerau_levenshtein, generic_damerau_levenshtein, normalized_damerau_levenshtein};
+use strsim::{generic_levenshtein, levenshtein, normalized_levenshtein};
 
 use crate::utils::StringProcessing;
 
 #[pyclass]
-pub struct Damerau {
+pub struct Levenshtein {
     re_obj: StringProcessing
 }
 
 #[pymethods]
-impl Damerau {
+impl Levenshtein {
     #[new]
     pub fn new() -> Self {
         let obj = StringProcessing::new();
-        Damerau {
+        Levenshtein {
             re_obj: obj,
         }
     }
@@ -30,7 +30,7 @@ impl Damerau {
         let t = target.to_string_lossy().to_string();
         let s_p = self.re_obj.replace_non_letters_non_numbers_with_whitespace(s);
         let t_p = self.re_obj.replace_non_letters_non_numbers_with_whitespace(t);
-        damerau_levenshtein(s_p.trim(), t_p.trim())
+        levenshtein(s_p.trim(), t_p.trim())
     }
 
     pub fn match_string_percentage(&mut self, source: &PyString, target: &PyString) -> f64 {
@@ -38,7 +38,7 @@ impl Damerau {
         let t = target.to_string_lossy().to_string();
         let s_p = self.re_obj.replace_non_letters_non_numbers_with_whitespace(s);
         let t_p = self.re_obj.replace_non_letters_non_numbers_with_whitespace(t);
-        normalized_damerau_levenshtein(s_p.trim(), t_p.trim())
+        normalized_levenshtein(s_p.trim(), t_p.trim())
     }
 
     pub fn generic_damerau_levenshtein_process(&mut self, source: &PyString, target: &PyString) {
@@ -65,7 +65,7 @@ impl Damerau {
         }
         let mut rez_vec: Vec<usize> = Vec::new();
         for i in temp_vec.iter() {
-            let z = damerau_levenshtein(s_p.trim(), i.as_str().trim());
+            let z = levenshtein(s_p.trim(), i.as_str().trim());
             rez_vec.push(z);
         }
         rez_vec
@@ -88,7 +88,7 @@ impl Damerau {
         }
         let mut rez_vec: Vec<f64> = Vec::new();
         for i in temp_vec.iter() {
-            let z = normalized_damerau_levenshtein(s_p.trim(), i.as_str().trim());
+            let z = normalized_levenshtein(s_p.trim(), i.as_str().trim());
             rez_vec.push(z);
         }
         rez_vec
@@ -117,7 +117,7 @@ impl Damerau {
         }
         let mut matched_val: Vec<_> = vec![];
         for i in temp_str.iter() {
-            let z = normalized_damerau_levenshtein(s_p.trim(), i.as_str().trim());
+            let z = normalized_levenshtein(s_p.trim(), i.as_str().trim());
             if z >= matching_percentage {
                 matched_val.push(i.clone());
             }
@@ -127,7 +127,7 @@ impl Damerau {
 }
 
 #[pymodule]
-pub fn damerau(_py: Python, m: &PyModule) -> PyResult<()> {
-    m.add_class::<Damerau>()?;
+pub fn basic_levenshtein(_py: Python, m: &PyModule) -> PyResult<()> {
+    m.add_class::<Levenshtein>()?;
     Ok(())
 }
