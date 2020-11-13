@@ -1,6 +1,7 @@
 extern crate strsim;
 
 use std::borrow::BorrowMut;
+use std::collections::HashMap;
 
 use ngrams::Ngram;
 use pyo3::prelude::*;
@@ -47,7 +48,7 @@ impl Damerau {
         // let t = target.to_string_lossy().to_string().split(" ");
         // generic_damerau_levenshtein(&s, &t)
     }
-    pub fn match_string_difference_list(&mut self, source: &PyString, target: &PyList) -> Vec<usize> {
+    pub fn match_string_difference_list(&mut self, source: &PyString, target: &PyList) -> HashMap<String, usize> {
         let s = source.to_string_lossy().to_string();
         let s_p = self.re_obj.replace_non_letters_non_numbers_with_whitespace(s);
         let mut temp_vec: Vec<String> = Vec::new();
@@ -63,14 +64,14 @@ impl Damerau {
             };
             temp_vec.push(self.re_obj.replace_non_letters_non_numbers_with_whitespace(k));
         }
-        let mut rez_vec: Vec<usize> = Vec::new();
+        let mut rez_vec: HashMap<String, usize> = HashMap::new();
         for i in temp_vec.iter() {
             let z = damerau_levenshtein(s_p.trim(), i.as_str().trim());
-            rez_vec.push(z);
+            rez_vec.insert(i.clone(), z);
         }
         rez_vec
     }
-    pub fn match_string_percentage_list(&mut self, source: &PyString, target: &PyList) -> Vec<f64> {
+    pub fn match_string_percentage_list(&mut self, source: &PyString, target: &PyList) -> HashMap<String, f64> {
         let s = source.to_string_lossy().to_string();
         let s_p = self.re_obj.replace_non_letters_non_numbers_with_whitespace(s);
         let mut temp_vec: Vec<String> = Vec::new();
@@ -86,10 +87,10 @@ impl Damerau {
             };
             temp_vec.push(self.re_obj.replace_non_letters_non_numbers_with_whitespace(k));
         }
-        let mut rez_vec: Vec<f64> = Vec::new();
+        let mut rez_vec: HashMap<String, f64> = HashMap::new();
         for i in temp_vec.iter() {
             let z = normalized_damerau_levenshtein(s_p.trim(), i.as_str().trim());
-            rez_vec.push(z);
+            rez_vec.insert(i.clone(), z);
         }
         rez_vec
     }

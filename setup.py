@@ -106,7 +106,9 @@ setup(
     packages=["fastfuzzy"],
     rust_extensions=[
         make_rust_extension("fastfuzzy.text_search"),
-        make_rust_extension("fastfuzzy.damerau")
+        make_rust_extension("fastfuzzy.damerau"),
+        make_rust_extension("fastfuzzy.basic_levenshtein"),
+        make_rust_extension("fastfuzzy.string_matcher"),
     ],
     install_requires=install_requires,
     tests_require=tests_require,
