@@ -11,6 +11,7 @@ use rayon::prelude::*;
 use strsim::{generic_levenshtein, levenshtein, normalized_levenshtein};
 
 use crate::utils::{StringProcessing, thread_process};
+use std::time::{Duration, Instant};
 
 #[pyclass]
 pub struct Levenshtein {
@@ -58,9 +59,8 @@ impl Levenshtein {
                 Ok(val) => {
                     val
                 }
-                Err(Why) => {
-                    panic!("{:}", Why);
-                    String::new()
+                Err(why) => {
+                    panic!("{:}", why)
                 }
             };
             temp_vec.push(self.re_obj.replace_non_letters_non_numbers_with_whitespace(k));
@@ -72,25 +72,17 @@ impl Levenshtein {
         }
         rez_vec
     }
-    pub fn match_string_percentage_list(&mut self, source: &PyString, target: &PyList) -> HashMap<String, f64> {
+
+    pub fn match_string_percentage_list(&mut self, source: &PyString, target: Vec<String>) -> HashMap<String, f64> {
         let s = source.to_string_lossy().to_string();
-        // let s_p = self.re_obj.replace_non_letters_non_numbers_with_whitespace(s);
-        let mut temp_vec: Vec<String> = Vec::new();
-        for i in target.iter() {
-            let k = match i.extract() {
-                Ok(val) => {
-                    val
-                }
-                Err(Why) => {
-                    panic!("{:}", Why);
-                    String::new()
-                }
-            };
-            temp_vec.push(self.re_obj.replace_non_letters_non_numbers_with_whitespace(k));
-        }
+        let s_p = self.re_obj.replace_non_letters_non_numbers_with_whitespace(s);
+        let mut temp_vec: Vec<String> = target.par_iter().map(|i| {
+            self.re_obj.replace_non_letters_non_numbers_with_whitespace(i.to_string())
+        }).collect();
         let mut rez_vec: HashMap<String, f64> = HashMap::new();
+
         for i in temp_vec.iter() {
-            let z = normalized_levenshtein(s.trim(), i.as_str().trim());
+            let z = normalized_levenshtein(s_p.trim(), i.as_str().trim());
             rez_vec.insert(i.clone(), z);
         }
         rez_vec
@@ -105,8 +97,8 @@ impl Levenshtein {
                 Ok(val) => {
                     val
                 }
-                Err(Why) => {
-                    panic!("{:}", Why);
+                Err(why) => {
+                    panic!("{:}", why);
                     String::new()
                 }
             };
@@ -148,8 +140,38 @@ impl Levenshtein {
     }
 }
 
+#[pyfunction]
+pub fn match_string_percentage_list_fn(source: &str, target: Vec<String>) -> HashMap<String, f64> {
+    let s = source.to_string();
+    let obj = StringProcessing::new();
+    let s_p = obj.replace_non_letters_non_numbers_with_whitespace(s);
+
+    let mut temp_vec: Vec<String> = target.par_iter().map(|i| {
+        obj.replace_non_letters_non_numbers_with_whitespace(i.to_string())
+    }).collect();
+    let mut rez_vec: HashMap<String, f64> = HashMap::new();
+
+    for i in temp_vec.iter() {
+        let z = normalized_levenshtein(s_p.trim(), i.as_str().trim());
+        rez_vec.insert(i.clone(), z);
+    }
+    rez_vec
+}
+
+#[pyfunction]
+pub fn match_string_percentage_fn(source: &str, target: &str) -> f64 {
+    let s = source.to_string();
+    let t = target.to_string();
+    let obj = StringProcessing::new();
+    let s_p = obj.replace_non_letters_non_numbers_with_whitespace(s);
+    let t_p = obj.replace_non_letters_non_numbers_with_whitespace(t);
+    normalized_levenshtein(s_p.trim(), t_p.trim())
+}
+
 #[pymodule]
 pub fn basic_levenshtein(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<Levenshtein>()?;
+    m.add_function(wrap_pyfunction!(match_string_percentage_list_fn, m)?)?;
+    m.add_function(wrap_pyfunction!(match_string_percentage_fn, m)?)?;
     Ok(())
 }

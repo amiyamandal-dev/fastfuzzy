@@ -57,9 +57,8 @@ impl Damerau {
                 Ok(val) => {
                     val
                 }
-                Err(Why) => {
-                    panic!("{:}", Why);
-                    String::new()
+                Err(why) => {
+                    panic!("{:}", why)
                 }
             };
             temp_vec.push(self.re_obj.replace_non_letters_non_numbers_with_whitespace(k));
@@ -80,9 +79,8 @@ impl Damerau {
                 Ok(val) => {
                     val
                 }
-                Err(Why) => {
-                    panic!("{:}", Why);
-                    String::new()
+                Err(why) => {
+                    panic!("{:}", why)
                 }
             };
             temp_vec.push(self.re_obj.replace_non_letters_non_numbers_with_whitespace(k));

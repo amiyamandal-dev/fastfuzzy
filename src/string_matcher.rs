@@ -49,7 +49,7 @@ impl StringMatcher {
         let t_p = self.re_obj.replace_non_letters_non_numbers_with_whitespace(t);
         let k = match hamming(s_p.trim(), t_p.trim()) {
             Ok(val) => val,
-            Err(Why) => panic!("{:}", Why)
+            Err(why) => panic!("{:}", why)
         };
         k
     }
@@ -80,9 +80,8 @@ impl StringMatcher {
                 Ok(val) => {
                     val
                 }
-                Err(Why) => {
-                    panic!("{:}", Why);
-                    String::new()
+                Err(why) => {
+                    panic!("{:}", why)
                 }
             };
             temp_vec.push(self.re_obj.replace_non_letters_non_numbers_with_whitespace(k));
@@ -104,9 +103,8 @@ impl StringMatcher {
                 Ok(val) => {
                     val
                 }
-                Err(Why) => {
-                    panic!("{:}", Why);
-                    String::new()
+                Err(why) => {
+                    panic!("{:}", why)
                 }
             };
             temp_vec.push(self.re_obj.replace_non_letters_non_numbers_with_whitespace(k));
@@ -128,9 +126,8 @@ impl StringMatcher {
                 Ok(val) => {
                     val
                 }
-                Err(Why) => {
-                    panic!("{:}", Why);
-                    String::new()
+                Err(why) => {
+                    panic!("{:}", why)
                 }
             };
             temp_vec.push(self.re_obj.replace_non_letters_non_numbers_with_whitespace(k));
@@ -152,9 +149,8 @@ impl StringMatcher {
                 Ok(val) => {
                     val
                 }
-                Err(Why) => {
-                    panic!("{:}", Why);
-                    String::new()
+                Err(why) => {
+                    panic!("{:}", why)
                 }
             };
             temp_vec.push(self.re_obj.replace_non_letters_non_numbers_with_whitespace(k));
@@ -163,7 +159,7 @@ impl StringMatcher {
         for i in temp_vec.iter() {
             let z = match hamming(s_p.trim(), i.as_str().trim()) {
                 Ok(val) => val,
-                Err(Why) => panic!("{:}", Why)
+                Err(why) => panic!("{:}", why)
             };
             rez_vec.insert(i.clone(), z);
         }
@@ -179,9 +175,8 @@ impl StringMatcher {
                 Ok(val) => {
                     val
                 }
-                Err(Why) => {
-                    panic!("{:}", Why);
-                    String::new()
+                Err(why) => {
+                    panic!("{:}", why)
                 }
             };
             temp_vec.push(self.re_obj.replace_non_letters_non_numbers_with_whitespace(k));
