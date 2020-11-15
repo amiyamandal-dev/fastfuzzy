@@ -141,8 +141,8 @@ impl Levenshtein {
 }
 
 #[pyfunction]
-pub fn match_string_percentage_list_fn(source: &str, target: Vec<String>) -> HashMap<String, f64> {
-    let s = source.to_string();
+pub fn match_string_percentage_list_fn(py: Python, source: &PyString, target: Vec<String>) -> PyResult<HashMap<String, f64>> {
+    let s = source.extract().unwrap();
     let obj = StringProcessing::new();
     let s_p = obj.replace_non_letters_non_numbers_with_whitespace(s);
 
@@ -155,17 +155,17 @@ pub fn match_string_percentage_list_fn(source: &str, target: Vec<String>) -> Has
         let z = normalized_levenshtein(s_p.trim(), i.as_str().trim());
         rez_vec.insert(i.clone(), z);
     }
-    rez_vec
+    Ok(rez_vec)
 }
 
 #[pyfunction]
-pub fn match_string_percentage_fn(source: &str, target: &str) -> f64 {
-    let s = source.to_string();
-    let t = target.to_string();
+pub fn match_string_percentage_fn(py: Python,source: &PyString, target: &PyString) -> f64 {
+    let s = source.to_string_lossy().to_string();
+    let t = target.to_string_lossy().to_string();
     let obj = StringProcessing::new();
-    let s_p = obj.replace_non_letters_non_numbers_with_whitespace(s);
-    let t_p = obj.replace_non_letters_non_numbers_with_whitespace(t);
-    normalized_levenshtein(s_p.trim(), t_p.trim())
+    // let s_p = obj.replace_non_letters_non_numbers_with_whitespace(s);
+    // let t_p = obj.replace_non_letters_non_numbers_with_whitespace(t);
+    normalized_levenshtein(s.trim(), t.trim())
 }
 
 #[pymodule]

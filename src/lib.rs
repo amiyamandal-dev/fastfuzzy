@@ -1,6 +1,3 @@
-use pyo3::Python;
-use pyo3::prelude::*;
-
 pub mod word_count;
 pub mod utils;
 pub mod tokenizer;
