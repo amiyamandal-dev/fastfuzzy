@@ -93,19 +93,13 @@ impl Levenshtein {
         let s_p = self.re_obj.replace_non_letters_non_numbers_with_whitespace(s);
         let mut temp_vec: Vec<String> = Vec::new();
         for i in target.iter() {
-            let k = match i.extract() {
-                Ok(val) => {
-                    val
-                }
-                Err(why) => {
-                    panic!("{:}", why);
-                    String::new()
-                }
+            let k: String = match i.extract() {
+                Ok(val) => val,
+                Err(why) => panic!("{:}", why),
             };
             temp_vec.push(self.re_obj.replace_non_letters_non_numbers_with_whitespace(k));
         }
         thread_process(s_p, temp_vec)
-        // rez_vec
     }
 
     pub fn search_in_blob_text(&mut self, source: &PyString, target: &PyString, matching_percentage: f64) -> Vec<String> {

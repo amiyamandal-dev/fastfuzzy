@@ -14,9 +14,6 @@ fn fibonacci(n: u64) -> u64 {
     }
 }
 
-extern crate crossbeam;
-extern crate crossbeam_channel;
-extern crate num_cpus;
 
 use regex::Regex;
 
