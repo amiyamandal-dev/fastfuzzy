@@ -1,0 +1,443 @@
+{
+  "benchmark_info": {
+    "size": 10000,
+    "iterations": 5,
+    "timestamp": 1753521191.381444
+  },
+  "results": [
+    {
+      "name": "fast_fuzzy_ratio",
+      "library": "fast_fuzzy",
+      "operation": "ratio",
+      "mean_time": 0.01593235000036657,
+      "std_time": 0.0003551412166020233,
+      "min_time": 0.015600749989971519,
+      "max_time": 0.01645466696936637,
+      "operations_per_second": 6276.537987032623,
+      "relative_speed": 0.002628814603775829,
+      "times": [
+        0.01645466696936637,
+        0.01613883301615715,
+        0.015743958007078618,
+        0.015723542019259185,
+        0.015600749989971519
+      ]
+    },
+    {
+      "name": "fast_fuzzy_partial_ratio",
+      "library": "fast_fuzzy",
+      "operation": "partial_ratio",
+      "mean_time": 0.01610475000925362,
+      "std_time": 0.0003867127391578218,
+      "min_time": 0.015696917020250112,
+      "max_time": 0.016704667010344565,
+      "operations_per_second": 6209.3481701076425,
+      "relative_speed": 0.008909383720233897,
+      "times": [
+        0.016704667010344565,
+        0.01602037501288578,
+        0.01622270798543468,
+        0.01587908301735297,
+        0.015696917020250112
+      ]
+    },
+    {
+      "name": "fast_fuzzy_token_sort_ratio",
+      "library": "fast_fuzzy",
+      "operation": "token_sort_ratio",
+      "mean_time": 0.015895999979693442,
+      "std_time": 0.0003554510899581624,
+      "min_time": 0.015606249973643571,
+      "max_time": 0.01648387499153614,
+      "operations_per_second": 6290.890798172266,
+      "relative_speed": 0.003927087358415733,
+      "times": [
+        0.01648387499153614,
+        0.015913624956738204,
+        0.01585141697432846,
+        0.01562483300222084,
+        0.015606249973643571
+      ]
+    },
+    {
+      "name": "fast_fuzzy_levenshtein",
+      "library": "fast_fuzzy",
+      "operation": "levenshtein",
+      "mean_time": 8.859999943524599e-05,
+      "std_time": 5.484042589890685e-07,
+      "min_time": 8.787499973550439e-05,
+      "max_time": 8.91250092536211e-05,
+      "operations_per_second": 1128668.1787519176,
+      "relative_speed": 0.22911954539685148,
+      "times": [
+        8.91250092536211e-05,
+        8.816702757030725e-05,
+        8.787499973550439e-05,
+        8.883298141881824e-05,
+        8.899997919797897e-05
+      ]
+    },
+    {
+      "name": "fast_fuzzy_jaro_winkler",
+      "library": "fast_fuzzy",
+      "operation": "jaro_winkler",
+      "mean_time": 6.482498720288277e-05,
+      "std_time": 2.870903282847649e-06,
+      "min_time": 6.212497828528285e-05,
+      "max_time": 6.925000343471766e-05,
+      "operations_per_second": 1542615.0364986574,
+      "relative_speed": 0.7063912518155945,
+      "times": [
+        6.925000343471766e-05,
+        6.595801096409559e-05,
+        6.399996345862746e-05,
+        6.279197987169027e-05,
+        6.212497828528285e-05
+      ]
+    },
+    {
+      "name": "RapidFuzz_ratio",
+      "library": "RapidFuzz",
+      "operation": "ratio",
+      "mean_time": 4.1883194353431466e-05,
+      "std_time": 1.8470374671295448e-07,
+      "min_time": 4.1666964534670115e-05,
+      "max_time": 4.2166037019342184e-05,
+      "operations_per_second": 2387592.4829455386,
+      "relative_speed": 1.0,
+      "times": [
+        4.2166037019342184e-05,
+        4.187499871477485e-05,
+        4.191696643829346e-05,
+        4.1666964534670115e-05,
+        4.1791005060076714e-05
+      ]
+    },
+    {
+      "name": "RapidFuzz_partial_ratio",
+      "library": "RapidFuzz",
+      "operation": "partial_ratio",
+      "mean_time": 0.0001434833975508809,
+      "std_time": 3.394728041485256e-06,
+      "min_time": 0.00013995799235999584,
+      "max_time": 0.00014879199443385005,
+      "operations_per_second": 696944.7455726634,
+      "relative_speed": 1.0,
+      "times": [
+        0.00014879199443385005,
+        0.00014445901615545154,
+        0.0001414999715052545,
+        0.00013995799235999584,
+        0.0001427080132998526
+      ]
+    },
+    {
+      "name": "RapidFuzz_token_sort_ratio",
+      "library": "RapidFuzz",
+      "operation": "token_sort_ratio",
+      "mean_time": 6.242498056963086e-05,
+      "std_time": 1.3319324627752244e-06,
+      "min_time": 6.125000072643161e-05,
+      "max_time": 6.458297139033675e-05,
+      "operations_per_second": 1601922.805381681,
+      "relative_speed": 1.0,
+      "times": [
+        6.458297139033675e-05,
+        6.258295616135001e-05,
+        6.229197606444359e-05,
+        6.141699850559235e-05,
+        6.125000072643161e-05
+      ]
+    },
+    {
+      "name": "RapidFuzz_levenshtein",
+      "library": "RapidFuzz",
+      "operation": "levenshtein",
+      "mean_time": 2.0299991592764855e-05,
+      "std_time": 2.2115579838019008e-06,
+      "min_time": 1.916696783155203e-05,
+      "max_time": 2.4250010028481483e-05,
+      "operations_per_second": 4926110.414530473,
+      "relative_speed": 1.0,
+      "times": [
+        2.4250010028481483e-05,
+        1.9499973859637976e-05,
+        1.9332976080477238e-05,
+        1.916696783155203e-05,
+        1.9250030163675547e-05
+      ]
+    },
+    {
+      "name": "RapidFuzz_jaro_winkler",
+      "library": "RapidFuzz",
+      "operation": "jaro_winkler",
+      "mean_time": 4.579180385917425e-05,
+      "std_time": 6.270353619792312e-07,
+      "min_time": 4.516699118539691e-05,
+      "max_time": 4.675000673159957e-05,
+      "operations_per_second": 2183796.9150010957,
+      "relative_speed": 1.0,
+      "times": [
+        4.675000673159957e-05,
+        4.6042026951909065e-05,
+        4.562496906146407e-05,
+        4.537502536550164e-05,
+        4.516699118539691e-05
+      ]
+    },
+    {
+      "name": "FuzzyWuzzy_ratio",
+      "library": "FuzzyWuzzy",
+      "operation": "ratio",
+      "mean_time": 0.00011239182204008103,
+      "std_time": 2.2076073798253206e-06,
+      "min_time": 0.00011125003220513463,
+      "max_time": 0.00011633301619440317,
+      "operations_per_second": 889744.4510183146,
+      "relative_speed": 0.37265339766887257,
+      "times": [
+        0.0001115840277634561,
+        0.00011633301619440317,
+        0.00011129199992865324,
+        0.00011125003220513463,
+        0.00011150003410875797
+      ]
+    },
+    {
+      "name": "FuzzyWuzzy_partial_ratio",
+      "library": "FuzzyWuzzy",
+      "operation": "partial_ratio",
+      "mean_time": 0.0007155080209486186,
+      "std_time": 6.930544331924271e-06,
+      "min_time": 0.0007088330457918346,
+      "max_time": 0.0007250410271808505,
+      "operations_per_second": 139760.83715654266,
+      "relative_speed": 0.20053359759776138,
+      "times": [
+        0.0007250410271808505,
+        0.0007195830112323165,
+        0.0007148750009946525,
+        0.0007092080195434391,
+        0.0007088330457918346
+      ]
+    },
+    {
+      "name": "FuzzyWuzzy_token_sort_ratio",
+      "library": "FuzzyWuzzy",
+      "operation": "token_sort_ratio",
+      "mean_time": 0.0005188998184166849,
+      "std_time": 6.983147836409443e-06,
+      "min_time": 0.0005127500044181943,
+      "max_time": 0.0005290000117383897,
+      "operations_per_second": 192715.4268527772,
+      "relative_speed": 0.12030256776752733,
+      "times": [
+        0.0005228330264799297,
+        0.0005290000117383897,
+        0.0005128750344738364,
+        0.0005170410149730742,
+        0.0005127500044181943
+      ]
+    },
+    {
+      "name": "python-Levenshtein_distance",
+      "library": "python-Levenshtein",
+      "operation": "distance",
+      "mean_time": 2.8525001835078e-05,
+      "std_time": 3.43490653152037e-06,
+      "min_time": 2.6875000912696123e-05,
+      "max_time": 3.466696944087744e-05,
+      "operations_per_second": 3505696.5317010838,
+      "relative_speed": 1.0,
+      "times": [
+        3.466696944087744e-05,
+        2.7125002816319466e-05,
+        2.6916037313640118e-05,
+        2.704199869185686e-05,
+        2.6875000912696123e-05
+      ]
+    },
+    {
+      "name": "python-Levenshtein_ratio",
+      "library": "python-Levenshtein",
+      "operation": "ratio",
+      "mean_time": 4.74083935841918e-05,
+      "std_time": 3.1324169468698805e-07,
+      "min_time": 4.7084002289921045e-05,
+      "max_time": 4.791602259501815e-05,
+      "operations_per_second": 2109331.1213427135,
+      "relative_speed": 0.883455253109384,
+      "times": [
+        4.791602259501815e-05,
+        4.7457986511290073e-05,
+        4.7291978262364864e-05,
+        4.7084002289921045e-05,
+        4.7291978262364864e-05
+      ]
+    },
+    {
+      "name": "python-Levenshtein_jaro_winkler",
+      "library": "python-Levenshtein",
+      "operation": "jaro_winkler",
+      "mean_time": 5.2708399016410114e-05,
+      "std_time": 7.493715423581936e-07,
+      "min_time": 5.216698627918959e-05,
+      "max_time": 5.3999945521354675e-05,
+      "operations_per_second": 1897230.8373256836,
+      "relative_speed": 0.8687762237839464,
+      "times": [
+        5.3999945521354675e-05,
+        5.262502236291766e-05,
+        5.254201823845506e-05,
+        5.220802268013358e-05,
+        5.216698627918959e-05
+      ]
+    },
+    {
+      "name": "fast_fuzzy_batch_ratio",
+      "library": "fast_fuzzy",
+      "operation": "batch_ratio",
+      "mean_time": 0.0032617910183034837,
+      "std_time": 0.0,
+      "min_time": 0.0032617910183034837,
+      "max_time": 0.0032617910183034837,
+      "operations_per_second": 3065800.3360378314,
+      "relative_speed": 1.0,
+      "times": [
+        0.0032617910183034837
+      ]
+    },
+    {
+      "name": "fast_fuzzy_batch_levenshtein",
+      "library": "fast_fuzzy",
+      "operation": "batch_levenshtein",
+      "mean_time": 0.0013625830179080367,
+      "std_time": 0.0,
+      "min_time": 0.0013625830179080367,
+      "max_time": 0.0013625830179080367,
+      "operations_per_second": 7339002.371652131,
+      "relative_speed": 1.0,
+      "times": [
+        0.0013625830179080367
+      ]
+    },
+    {
+      "name": "RapidFuzz_cdist_ratio",
+      "library": "RapidFuzz",
+      "operation": "cdist_ratio",
+      "mean_time": Infinity,
+      "std_time": 0.0,
+      "min_time": Infinity,
+      "max_time": Infinity,
+      "operations_per_second": 0.0,
+      "relative_speed": 0.0,
+      "times": [
+        Infinity
+      ]
+    },
+    {
+      "name": "RapidFuzz_cdist_levenshtein",
+      "library": "RapidFuzz",
+      "operation": "cdist_levenshtein",
+      "mean_time": Infinity,
+      "std_time": 0.0,
+      "min_time": Infinity,
+      "max_time": Infinity,
+      "operations_per_second": 0.0,
+      "relative_speed": 0.0,
+      "times": [
+        Infinity
+      ]
+    },
+    {
+      "name": "fast_fuzzy_extract",
+      "library": "fast_fuzzy",
+      "operation": "extract",
+      "mean_time": Infinity,
+      "std_time": 0.0,
+      "min_time": Infinity,
+      "max_time": Infinity,
+      "operations_per_second": 0.0,
+      "relative_speed": 0.0,
+      "times": [
+        Infinity,
+        Infinity
+      ]
+    },
+    {
+      "name": "fast_fuzzy_extractOne",
+      "library": "fast_fuzzy",
+      "operation": "extractOne",
+      "mean_time": Infinity,
+      "std_time": 0.0,
+      "min_time": Infinity,
+      "max_time": Infinity,
+      "operations_per_second": 0.0,
+      "relative_speed": 0.0,
+      "times": [
+        Infinity,
+        Infinity
+      ]
+    },
+    {
+      "name": "RapidFuzz_extract",
+      "library": "RapidFuzz",
+      "operation": "extract",
+      "mean_time": 0.12378410398378037,
+      "std_time": 0.0016738094462085496,
+      "min_time": 0.1226005419739522,
+      "max_time": 0.12496766599360853,
+      "operations_per_second": 807858.1722666358,
+      "relative_speed": 1.0,
+      "times": [
+        0.12496766599360853,
+        0.1226005419739522
+      ]
+    },
+    {
+      "name": "RapidFuzz_extractOne",
+      "library": "RapidFuzz",
+      "operation": "extractOne",
+      "mean_time": 0.0825184374989476,
+      "std_time": 3.6387012448918424e-05,
+      "min_time": 0.08249270799569786,
+      "max_time": 0.08254416700219736,
+      "operations_per_second": 1211850.3819376773,
+      "relative_speed": 1.0,
+      "times": [
+        0.08249270799569786,
+        0.08254416700219736
+      ]
+    },
+    {
+      "name": "FuzzyWuzzy_extract",
+      "library": "FuzzyWuzzy",
+      "operation": "extract",
+      "mean_time": 2.090501395490719,
+      "std_time": 0.001095337364951449,
+      "min_time": 2.089726875012275,
+      "max_time": 2.091275915969163,
+      "operations_per_second": 47835.41413351999,
+      "relative_speed": 0.059212638772108354,
+      "times": [
+        2.091275915969163,
+        2.089726875012275
+      ]
+    },
+    {
+      "name": "FuzzyWuzzy_extractOne",
+      "library": "FuzzyWuzzy",
+      "operation": "extractOne",
+      "mean_time": 2.102864396001678,
+      "std_time": 0.005962884431577411,
+      "min_time": 2.098647999984678,
+      "max_time": 2.107080792018678,
+      "operations_per_second": 47554.18380288189,
+      "relative_speed": 0.03924096943951576,
+      "times": [
+        2.098647999984678,
+        2.107080792018678
+      ]
+    }
+  ]
+}
