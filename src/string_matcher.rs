@@ -2,7 +2,7 @@
 extern crate strsim;
 
 use std::cmp::{max, min};
-use std::collections::{BinaryHeap, HashSet};
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use once_cell::sync::Lazy;
@@ -529,6 +529,17 @@ impl Process {
         }
 
         Ok(results)
+    }
+
+    // Wrapper function for benchmark compatibility
+    pub fn extract_simple(&self, query: &str, choices: Vec<String>, limit: Option<usize>) -> PyResult<Vec<(String, f64, usize)>> {
+        self.extract(query, choices, limit, Some(0.0), Some("ratio"))
+    }
+
+    // Wrapper function for benchmark compatibility
+    pub fn extract_one_simple(&self, query: &str, choices: Vec<String>) -> PyResult<Option<(String, f64, usize)>> {
+        let results = self.extract(query, choices, Some(1), Some(0.0), Some("ratio"))?;
+        Ok(results.into_iter().next())
     }
 
     pub fn extract_one(

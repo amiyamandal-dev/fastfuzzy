@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-fast_fuzzy Performance Benchmark Suite
+fastfuzzy Performance Benchmark Suite
 
-This script compares fast_fuzzy performance against other popular fuzzy string
+This script compares fastfuzzy performance against other popular fuzzy string
 matching libraries including RapidFuzz, FuzzyWuzzy, and python-Levenshtein.
 
 Usage:
@@ -25,11 +25,11 @@ import traceback
 
 # Import the libraries to benchmark
 try:
-    import fast_fuzzy
-    fast_fuzzy_AVAILABLE = True
+    import fastfuzzy
+    fastfuzzy_AVAILABLE = True
 except ImportError:
-    fast_fuzzy_AVAILABLE = False
-    print("WARNING: fast_fuzzy not available")
+    fastfuzzy_AVAILABLE = False
+    print("WARNING: fastfuzzy not available")
 
 try:
     import rapidfuzz
@@ -185,14 +185,14 @@ class BenchmarkSuite:
 
         benchmarks = []
 
-        # fast_fuzzy benchmarks
-        if fast_fuzzy_AVAILABLE:
+        # fastfuzzy benchmarks
+        if fastfuzzy_AVAILABLE:
             benchmarks.extend([
-                ("fast_fuzzy", "ratio", lambda: [fast_fuzzy.ratio(s1, s2, 0.5) for s1, s2 in test_pairs]),
-                ("fast_fuzzy", "partial_ratio", lambda: [fast_fuzzy.partial_ratio(s1, s2, 0.5) for s1, s2 in test_pairs]),
-                ("fast_fuzzy", "token_sort_ratio", lambda: [fast_fuzzy.token_sort_ratio(s1, s2, 0.5) for s1, s2 in test_pairs]),
-                ("fast_fuzzy", "levenshtein", lambda: [fast_fuzzy.levenshtein(s1, s2) for s1, s2 in test_pairs]),
-                ("fast_fuzzy", "jaro_winkler", lambda: [fast_fuzzy.jaro_winkler(s1, s2) for s1, s2 in test_pairs]),
+                ("fastfuzzy", "ratio", lambda: [fastfuzzy.ratio(s1, s2, 0.5) for s1, s2 in test_pairs]),
+                ("fastfuzzy", "partial_ratio", lambda: [fastfuzzy.partial_ratio(s1, s2, 0.5) for s1, s2 in test_pairs]),
+                ("fastfuzzy", "token_sort_ratio", lambda: [fastfuzzy.token_sort_ratio(s1, s2, 0.5) for s1, s2 in test_pairs]),
+                ("fastfuzzy", "levenshtein", lambda: [fastfuzzy.levenshtein(s1, s2) for s1, s2 in test_pairs]),
+                ("fastfuzzy", "jaro_winkler", lambda: [fastfuzzy.jaro_winkler(s1, s2) for s1, s2 in test_pairs]),
             ])
 
         # RapidFuzz benchmarks
@@ -252,11 +252,11 @@ class BenchmarkSuite:
 
         benchmarks = []
 
-        # fast_fuzzy batch benchmarks
-        if fast_fuzzy_AVAILABLE:
+        # fastfuzzy batch benchmarks
+        if fastfuzzy_AVAILABLE:
             benchmarks.extend([
-                ("fast_fuzzy", "batch_ratio", lambda: fast_fuzzy.batch_ratio(batch_queries, batch_choices)),
-                ("fast_fuzzy", "batch_levenshtein", lambda: fast_fuzzy.batch_levenshtein(batch_queries, batch_choices)),
+                ("fastfuzzy", "batch_ratio", lambda: fastfuzzy.batch_ratio(batch_queries, batch_choices)),
+                ("fastfuzzy", "batch_levenshtein", lambda: fastfuzzy.batch_levenshtein(batch_queries, batch_choices)),
             ])
 
         # RapidFuzz batch benchmarks
@@ -298,11 +298,11 @@ class BenchmarkSuite:
 
         benchmarks = []
 
-        # fast_fuzzy search benchmarks
-        if fast_fuzzy_AVAILABLE:
+        # fastfuzzy search benchmarks
+        if fastfuzzy_AVAILABLE:
             benchmarks.extend([
-                ("fast_fuzzy", "extract", lambda: [fast_fuzzy.process.extract(q, search_choices, limit=5) for q in search_queries]),
-                ("fast_fuzzy", "extractOne", lambda: [fast_fuzzy.process.extractOne(q, search_choices) for q in search_queries]),
+                ("fastfuzzy", "extract", lambda: [fastfuzzy.extract(q, search_choices, 5) for q in search_queries]),
+                ("fastfuzzy", "extractOne", lambda: [fastfuzzy.extract_one(q, search_choices) for q in search_queries]),
             ])
 
         # RapidFuzz search benchmarks
@@ -359,8 +359,8 @@ class BenchmarkSuite:
 
             libraries_to_test = []
 
-            if fast_fuzzy_AVAILABLE:
-                libraries_to_test.append(("fast_fuzzy", lambda q: fast_fuzzy.process.extract(q, large_choices, limit=10)))
+            if fastfuzzy_AVAILABLE:
+                libraries_to_test.append(("fastfuzzy", lambda q: fastfuzzy.extract(q, large_choices, 10)))
 
             if RAPIDFUZZ_AVAILABLE:
                 libraries_to_test.append(("RapidFuzz", lambda q: rf_process.extract(q, large_choices, limit=10)))
@@ -486,11 +486,11 @@ class BenchmarkSuite:
 
     def run_all_benchmarks(self):
         """Run all benchmark suites."""
-        print("fast_fuzzy Performance Benchmark Suite")
+        print("fastfuzzy Performance Benchmark Suite")
         print("="*50)
         print(f"Dataset size: {self.size}")
         print(f"Iterations per test: {self.iterations}")
-        print(f"Libraries available: fast_fuzzy={fast_fuzzy_AVAILABLE}, "
+        print(f"Libraries available: fastfuzzy={fastfuzzy_AVAILABLE}, "
               f"RapidFuzz={RAPIDFUZZ_AVAILABLE}, FuzzyWuzzy={FUZZYWUZZY_AVAILABLE}, "
               f"python-Levenshtein={PYTHON_LEVENSHTEIN_AVAILABLE}")
 
@@ -511,7 +511,7 @@ class BenchmarkSuite:
 
 def main():
     """Main function."""
-    parser = argparse.ArgumentParser(description="fast_fuzzy Performance Benchmark Suite")
+    parser = argparse.ArgumentParser(description="fastfuzzy Performance Benchmark Suite")
     parser.add_argument("--size", type=int, default=5000,
                        help="Size of test dataset (default: 5000)")
     parser.add_argument("--iterations", type=int, default=5,
@@ -531,9 +531,9 @@ def main():
         sys.exit(1)
 
     # Check if any libraries are available
-    if not any([fast_fuzzy_AVAILABLE, RAPIDFUZZ_AVAILABLE, FUZZYWUZZY_AVAILABLE, PYTHON_LEVENSHTEIN_AVAILABLE]):
+    if not any([fastfuzzy_AVAILABLE, RAPIDFUZZ_AVAILABLE, FUZZYWUZZY_AVAILABLE, PYTHON_LEVENSHTEIN_AVAILABLE]):
         print("ERROR: No fuzzy string matching libraries available for benchmarking")
-        print("Please install at least one of: fast_fuzzy, rapidfuzz, fuzzywuzzy, python-Levenshtein")
+        print("Please install at least one of: fastfuzzy, rapidfuzz, fuzzywuzzy, python-Levenshtein")
         sys.exit(1)
 
     # Run benchmarks

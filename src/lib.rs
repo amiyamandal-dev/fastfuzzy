@@ -1,129 +1,187 @@
 use pyo3::prelude::*;
+use pyo3::types::PyModule;
+extern crate dashmap;
 extern crate strsim;
 
-use std::collections::hash_map::DefaultHasher;
+use dashmap::DashMap;
 use std::collections::HashMap;
-use std::hash::{Hash, Hasher};
-// use std::simd::prelude::*;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
-use pyo3::wrap_pyfunction;
+use pyo3::{wrap_pyfunction, Py};
 use rayon::prelude::*;
 use regex::Regex;
-use strsim::{damerau_levenshtein, levenshtein, normalized_damerau_levenshtein};
-use strsim::{hamming, jaro, jaro_winkler, normalized_levenshtein, osa_distance, sorensen_dice};
+use strsim::{damerau_levenshtein, normalized_damerau_levenshtein};
+use strsim::{hamming, jaro, jaro_winkler as strsim_jaro_winkler, osa_distance};
+
+// SIMD support
+#[cfg(target_arch = "x86_64")]
+use std::arch::x86_64::*;
 
 // Import the string_matcher module
 mod string_matcher;
 
 // ============================================================================
-// SIMD-Optimized String Processing
+// Optimized String Processing with SIMD
 // ============================================================================
 
-pub struct UltraFastStringProcessor {
+pub struct OptimizedStringProcessor {
     re: Regex,
     // Pre-compiled lookup table for character classification
-    char_lookup: [bool; 256],
+    char_lookup: [bool; 128], // Reduced to 128 for ASCII only
 }
 
-impl UltraFastStringProcessor {
+impl OptimizedStringProcessor {
     pub fn new() -> Self {
         let re = Regex::new(r"(?ui)\W").unwrap();
 
-        // Build ASCII lookup table for faster character classification
-        let mut char_lookup = [false; 256];
-        for i in 0..256 {
+        // Build ASCII lookup table for faster character classification (0-127 only)
+        let mut char_lookup = [false; 128];
+        for i in 0..128 {
             let ch = i as u8 as char;
             char_lookup[i] = ch.is_ascii_alphanumeric();
         }
 
-        UltraFastStringProcessor { re, char_lookup }
+        OptimizedStringProcessor { re, char_lookup }
     }
 
     #[inline(always)]
-    pub fn fast_process(&self, input: &str) -> String {
+    #[cfg(target_arch = "x86_64")]
+    pub fn simd_process(&self, input: &str) -> String {
+        // Fast path for ASCII strings using SIMD
+        if input.is_ascii() && is_x86_feature_detected!("sse2") {
+            unsafe {
+                self.simd_process_impl(input)
+            }
+        } else {
+            self.fallback_process(input)
+        }
+    }
+
+    #[inline(always)]
+    #[cfg(target_arch = "x86_64")]
+    unsafe fn simd_process_impl(&self, input: &str) -> String {
+        let bytes = input.as_bytes();
+        let len = bytes.len();
+        let mut result = Vec::with_capacity(len);
+
+        // Process 16 bytes at a time using SSE2
+        let chunk_size = 16;
+        let chunks = len / chunk_size;
+        let remainder = len % chunk_size;
+
+        for chunk in 0..chunks {
+            let start = chunk * chunk_size;
+            let end = start + chunk_size;
+            let chunk_bytes = &bytes[start..end];
+
+            // Load 16 bytes into SSE registers
+            let data = _mm_loadu_si128(chunk_bytes.as_ptr() as *const __m128i);
+            
+            // Create masks for character classification
+            let zero = _mm_setzero_si128();
+            let space = _mm_set1_epi8(b' ' as i8);
+            
+            // Check for alphanumeric characters using lookup table approach
+            let mut processed_chunk = [0u8; 16];
+            for i in 0..16 {
+                let byte = chunk_bytes[i];
+                if byte < 128 && self.char_lookup[byte as usize] {
+                    processed_chunk[i] = byte;
+                } else {
+                    processed_chunk[i] = b' ';
+                }
+            }
+            
+            let processed = _mm_loadu_si128(processed_chunk.as_ptr() as *const __m128i);
+            _mm_storeu_si128(result.as_mut_ptr().add(start) as *mut __m128i, processed);
+        }
+
+        // Process remaining bytes
+        for i in (chunks * chunk_size)..len {
+            let byte = bytes[i];
+            if byte < 128 && self.char_lookup[byte as usize] {
+                result.push(byte);
+            } else {
+                result.push(b' ');
+            }
+        }
+
+        // Convert to string and normalize whitespace
+        match String::from_utf8(result) {
+            Ok(s) => s.split_whitespace().collect::<Vec<_>>().join(" "),
+            Err(_) => self.fallback_process(input)
+        }
+    }
+
+    #[inline(always)]
+    pub fn fallback_process(&self, input: &str) -> String {
         // Fast path for ASCII strings using lookup table
         if input.is_ascii() {
             let bytes = input.as_bytes();
             let mut result = Vec::with_capacity(input.len());
 
-            // SIMD processing for chunks of 32 bytes
-            let chunks = bytes.chunks_exact(32);
-            let remainder = chunks.remainder();
-
-            for chunk in chunks {
-                for &byte in chunk {
+            // Process bytes with bounds checking
+            for &byte in bytes {
+                // Ensure byte is within lookup table bounds
+                if byte < 128 {
                     if self.char_lookup[byte as usize] {
                         result.push(byte);
                     } else {
                         result.push(b' ');
                     }
-                }
-            }
-
-            // Process remainder
-            for &byte in remainder {
-                if self.char_lookup[byte as usize] {
-                    result.push(byte);
                 } else {
+                    // Non-ASCII byte, replace with space
                     result.push(b' ');
                 }
             }
 
-            // Convert back to string and trim
-            unsafe { String::from_utf8_unchecked(result) }
-                .split_whitespace()
-                .collect::<Vec<_>>()
-                .join(" ")
+            // Safely convert back to string
+            match String::from_utf8(result) {
+                Ok(s) => s.split_whitespace().collect::<Vec<_>>().join(" "),
+                Err(_) => {
+                    // Fallback to regex processing if UTF-8 conversion fails
+                    self.re.replace_all(input, " ").trim().to_string()
+                }
+            }
         } else {
             // Fallback for Unicode strings
             self.re.replace_all(input, " ").trim().to_string()
         }
     }
+
+    #[inline(always)]
+    pub fn process(&self, input: &str) -> String {
+        #[cfg(target_arch = "x86_64")]
+        {
+            self.simd_process(input)
+        }
+        #[cfg(not(target_arch = "x86_64"))]
+        {
+            self.fallback_process(input)
+        }
+    }
 }
 
 // ============================================================================
-// Lock-Free High-Performance Cache with Memory Pool
+// High-Performance Cache Implementation using DashMap
 // ============================================================================
 
-use std::cell::UnsafeCell;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-const CACHE_SIZE: usize = 2_097_152; // 2M entries
-const CACHE_MASK: usize = CACHE_SIZE - 1;
+const MAX_CACHE_SIZE: usize = 100_000; // Reduced to 100K for safety
 
-#[derive(Debug)]
-struct LockFreeCacheEntry {
-    hash: AtomicUsize,
-    value: UnsafeCell<String>,
-}
-
-unsafe impl Sync for LockFreeCacheEntry {}
-
-struct UltraCache {
-    entries: Box<[LockFreeCacheEntry; CACHE_SIZE]>,
+struct OptimizedCache {
+    entries: DashMap<String, String>,
     hit_count: AtomicUsize,
     miss_count: AtomicUsize,
-    generation: AtomicUsize,
 }
 
-impl UltraCache {
+impl OptimizedCache {
     fn new() -> Self {
-        // Initialize cache entries
-        let entries = (0..CACHE_SIZE)
-            .map(|_| LockFreeCacheEntry {
-                hash: AtomicUsize::new(0),
-                value: UnsafeCell::new(String::new()),
-            })
-            .collect::<Vec<_>>()
-            .try_into()
-            .unwrap();
-
         Self {
-            entries: Box::new(entries),
+            entries: DashMap::with_capacity(MAX_CACHE_SIZE),
             hit_count: AtomicUsize::new(0),
             miss_count: AtomicUsize::new(0),
-            generation: AtomicUsize::new(1),
         }
     }
 
@@ -132,84 +190,65 @@ impl UltraCache {
     where
         F: FnOnce() -> String,
     {
-        let hash = self.fast_hash(key);
-        let index = hash & CACHE_MASK;
-        let entry = &self.entries[index];
-
-        // Attempt to read from cache
-        let stored_hash = entry.hash.load(Ordering::Acquire);
-        if stored_hash == hash {
-            // Cache hit - return cached value
-            unsafe {
-                let value_ptr = entry.value.get();
-                let cached_value = (*value_ptr).clone();
-                self.hit_count.fetch_add(1, Ordering::Relaxed);
-                return cached_value;
-            }
+        // Check if key exists in cache
+        if let Some(entry) = self.entries.get(key) {
+            self.hit_count.fetch_add(1, Ordering::Relaxed);
+            return entry.clone();
         }
 
-        // Cache miss - compute new value
+        // Compute new value
         self.miss_count.fetch_add(1, Ordering::Relaxed);
         let computed = compute();
 
-        // Store in cache using CAS
-        let success = entry.hash.compare_exchange_weak(
-            stored_hash,
-            hash,
-            Ordering::Release,
-            Ordering::Relaxed,
-        );
+        // Evict old entries if cache is too large
+        if self.entries.len() >= MAX_CACHE_SIZE {
+            // Remove ~10% of entries when at capacity
+            let to_remove = MAX_CACHE_SIZE / 10;
+            let keys_to_remove: Vec<String> = self
+                .entries
+                .iter()
+                .take(to_remove)
+                .map(|entry| entry.key().clone())
+                .collect();
 
-        if success.is_ok() {
-            unsafe {
-                *entry.value.get() = computed.clone();
+            for key in keys_to_remove {
+                self.entries.remove(&key);
             }
         }
 
+        // Store in cache
+        self.entries.insert(key.to_string(), computed.clone());
         computed
     }
 
-    #[inline(always)]
-    fn fast_hash(&self, s: &str) -> usize {
-        // Ultra-fast hash using FNV-1a algorithm
-        let mut hash = 0xcbf29ce484222325_usize;
-        for byte in s.as_bytes() {
-            hash ^= *byte as usize;
-            hash = hash.wrapping_mul(0x100000001b3);
-        }
-        hash | 1 // Ensure non-zero hash
-    }
-
     fn clear(&self) {
-        for entry in self.entries.iter() {
-            entry.hash.store(0, Ordering::Release);
-        }
+        self.entries.clear();
         self.hit_count.store(0, Ordering::Relaxed);
         self.miss_count.store(0, Ordering::Relaxed);
-        self.generation.fetch_add(1, Ordering::Relaxed);
     }
 
     fn stats(&self) -> (usize, usize, usize) {
         let hits = self.hit_count.load(Ordering::Relaxed);
         let misses = self.miss_count.load(Ordering::Relaxed);
-        (CACHE_SIZE, hits, misses)
+        (self.entries.len(), hits, misses)
     }
 }
 
-// Global cache instance
-static GLOBAL_CACHE: std::sync::OnceLock<UltraCache> = std::sync::OnceLock::new();
+// Global cache instance using lazy_static pattern
+static GLOBAL_CACHE: std::sync::OnceLock<Arc<OptimizedCache>> = std::sync::OnceLock::new();
 
 #[inline(always)]
-fn get_cache() -> &'static UltraCache {
-    GLOBAL_CACHE.get_or_init(|| UltraCache::new())
+fn get_cache() -> &'static OptimizedCache {
+    let cache = GLOBAL_CACHE.get_or_init(|| Arc::new(OptimizedCache::new()));
+    &**cache
 }
 
 // ============================================================================
-// SIMD-Accelerated Levenshtein Distance
+// Optimized Levenshtein Distance Implementation with SIMD
 // ============================================================================
 
 #[inline(always)]
-fn simd_levenshtein(s1: &str, s2: &str) -> usize {
+fn optimized_levenshtein(s1: &str, s2: &str) -> usize {
     let bytes1 = s1.as_bytes();
     let bytes2 = s2.as_bytes();
     let len1 = bytes1.len();
@@ -222,21 +261,138 @@ fn simd_levenshtein(s1: &str, s2: &str) -> usize {
         return len1;
     }
 
-    // Use SIMD for small strings
-    if len1 <= 64 && len2 <= 64 {
-        simd_levenshtein_small(bytes1, bytes2)
-    } else {
-        // Fallback to optimized standard algorithm
-        optimized_levenshtein(bytes1, bytes2)
+    // Use SIMD-optimized implementation for ASCII strings
+    #[cfg(target_arch = "x86_64")]
+    {
+        if is_x86_feature_detected!("sse2") && s1.is_ascii() && s2.is_ascii() {
+            return unsafe { simd_levenshtein_impl(bytes1, bytes2) };
+        }
     }
+    
+    // Use parallel implementation for large strings
+    if len1 > 1000 || len2 > 1000 {
+        return parallel_levenshtein_impl(bytes1, bytes2);
+    }
+
+    // Use optimized implementation for all other string sizes
+    optimized_levenshtein_impl(bytes1, bytes2)
 }
 
 #[inline(always)]
-fn simd_levenshtein_small(s1: &[u8], s2: &[u8]) -> usize {
+#[cfg(target_arch = "x86_64")]
+unsafe fn simd_levenshtein_impl(s1: &[u8], s2: &[u8]) -> usize {
     let len1 = s1.len();
     let len2 = s2.len();
 
-    // Two-row algorithm with SIMD operations
+    // Handle empty strings
+    if len1 == 0 {
+        return len2;
+    }
+    if len2 == 0 {
+        return len1;
+    }
+
+    // Two-row algorithm with SIMD optimization
+    let mut prev_row = vec![0u32; len2 + 1];
+    let mut curr_row = vec![0u32; len2 + 1];
+
+    // Initialize first row
+    for j in 0..=len2 {
+        prev_row[j] = j as u32;
+    }
+
+    // Process in chunks of 16 for SIMD
+    for i in 1..=len1 {
+        curr_row[0] = i as u32;
+
+        let mut j = 1;
+        // Process 16 elements at a time using SIMD
+        while j + 16 <= len2 {
+            // Load data into SIMD registers
+            let s1_byte = _mm_set1_epi8(s1[i-1] as i8);
+            let s2_chunk = _mm_loadu_si128(s2[j-1..].as_ptr() as *const __m128i);
+            
+            // Compare bytes
+            let cmp_result = _mm_cmpeq_epi8(s1_byte, s2_chunk);
+            
+            // Convert comparison result to cost array
+            let costs: [u8; 16] = std::mem::transmute(_mm_movemask_epi8(cmp_result));
+            
+            // Process the costs
+            for k in 0..16 {
+                let cost = if costs[k] == 0 { 1 } else { 0 };
+                
+                let deletion = prev_row[j + k].saturating_add(1);
+                let insertion = curr_row[j + k - 1].saturating_add(1);
+                let substitution = prev_row[j + k - 1].saturating_add(cost);
+                
+                curr_row[j + k] = deletion.min(insertion).min(substitution);
+            }
+            
+            j += 16;
+        }
+
+        // Process remaining elements
+        for j in j..=len2 {
+            let cost = if s1.get(i - 1) == s2.get(j - 1) { 0 } else { 1 };
+
+            let deletion = prev_row[j].saturating_add(1);
+            let insertion = curr_row[j - 1].saturating_add(1);
+            let substitution = prev_row[j - 1].saturating_add(cost);
+
+            curr_row[j] = deletion.min(insertion).min(substitution);
+        }
+
+        std::mem::swap(&mut prev_row, &mut curr_row);
+    }
+
+    prev_row[len2] as usize
+}
+
+#[inline(always)]
+fn parallel_levenshtein_impl(s1: &[u8], s2: &[u8]) -> usize {
+    let len1 = s1.len();
+    let len2 = s2.len();
+
+    // Handle empty strings
+    if len1 == 0 {
+        return len2;
+    }
+    if len2 == 0 {
+        return len1;
+    }
+
+    // For very large strings, use a divide-and-conquer approach
+    if len1 > 10000 && len2 > 10000 {
+        // Split the larger string in half and compute distance for each half
+        let mid = len1 / 2;
+        let left_dist = optimized_levenshtein_impl(&s1[..mid], s2);
+        let right_dist = optimized_levenshtein_impl(&s1[mid..], s2);
+        return left_dist + right_dist;
+    }
+
+    optimized_levenshtein_impl(s1, s2)
+}
+
+#[inline(always)]
+fn optimized_levenshtein_impl(s1: &[u8], s2: &[u8]) -> usize {
+    let len1 = s1.len();
+    let len2 = s2.len();
+
+    // Handle empty strings
+    if len1 == 0 {
+        return len2;
+    }
+    if len2 == 0 {
+        return len1;
+    }
+
+    // Use smaller array when one string is much shorter than the other
+    if len1 > len2 * 4 || len2 > len1 * 4 {
+        return asymmetric_levenshtein(s1, s2);
+    }
+
+    // Two-row algorithm with optimized operations
     let mut prev_row = vec![0u32; len2 + 1];
     let mut curr_row = vec![0u32; len2 + 1];
 
@@ -248,18 +404,21 @@ fn simd_levenshtein_small(s1: &[u8], s2: &[u8]) -> usize {
     for i in 1..=len1 {
         curr_row[0] = i as u32;
 
-        // Process in chunks using SIMD where possible
-        let chunks = (1..=len2).step_by(8);
+        // Use early termination when possible
+        let mut min_val = curr_row[0];
+        
+        for j in 1..=len2 {
+            // Fast path for identical characters
+            let cost = if s1[i - 1] == s2[j - 1] { 0 } else { 1 };
 
-        for chunk_start in chunks {
-            let chunk_end = (chunk_start + 8).min(len2 + 1);
+            // Calculate all three operations
+            let deletion = prev_row[j] + 1;
+            let insertion = curr_row[j - 1] + 1;
+            let substitution = prev_row[j - 1] + cost;
 
-            for j in chunk_start..chunk_end {
-                let cost = if s1[i - 1] == s2[j - 1] { 0 } else { 1 };
-                curr_row[j] = (curr_row[j - 1] + 1)
-                    .min(prev_row[j] + 1)
-                    .min(prev_row[j - 1] + cost);
-            }
+            let min_op = deletion.min(insertion).min(substitution);
+            curr_row[j] = min_op;
+            min_val = min_val.min(min_op);
         }
 
         std::mem::swap(&mut prev_row, &mut curr_row);
@@ -269,43 +428,48 @@ fn simd_levenshtein_small(s1: &[u8], s2: &[u8]) -> usize {
 }
 
 #[inline(always)]
-fn optimized_levenshtein(s1: &[u8], s2: &[u8]) -> usize {
-    let len1 = s1.len();
-    let len2 = s2.len();
+fn asymmetric_levenshtein(s1: &[u8], s2: &[u8]) -> usize {
+    let (short, long) = if s1.len() < s2.len() { (s1, s2) } else { (s2, s1) };
+    
+    // For highly asymmetric cases, use a band algorithm
+    let k = (long.len() - short.len() + 1) as i32;
+    let mut prev_row = vec![0u32; short.len() + 1];
+    let mut curr_row = vec![0u32; short.len() + 1];
 
-    // Single allocation for both rows
-    let mut matrix = vec![0u32; 2 * (len2 + 1)];
-    let (prev_row, curr_row) = matrix.split_at_mut(len2 + 1);
-
-    // Initialize
-    for j in 0..=len2 {
+    // Initialize first row
+    for j in 0..=short.len() {
         prev_row[j] = j as u32;
     }
 
-    for i in 1..=len1 {
+    for i in 1..=long.len() {
         curr_row[0] = i as u32;
+        
+        let start = (i as i32 - k).max(1) as usize;
+        let end = (i as i32 + k).min(short.len() as i32) as usize;
 
-        for j in 1..=len2 {
-            let cost = if s1[i - 1] == s2[j - 1] { 0 } else { 1 };
-            curr_row[j] = (curr_row[j - 1] + 1)
-                .min(prev_row[j] + 1)
-                .min(prev_row[j - 1] + cost);
+        for j in start..=end {
+            let cost = if long[i - 1] == short[j - 1] { 0 } else { 1 };
+
+            let deletion = prev_row[j] + 1;
+            let insertion = curr_row[j - 1] + 1;
+            let substitution = prev_row[j - 1] + cost;
+
+            curr_row[j] = deletion.min(insertion).min(substitution);
         }
 
-        // Swap rows by copying
-        prev_row.copy_from_slice(curr_row);
+        std::mem::swap(&mut prev_row, &mut curr_row);
     }
 
-    prev_row[len2] as usize
+    prev_row[short.len()] as usize
 }
 
 // ============================================================================
-// Ultra-Optimized Levenshtein Class
+// Optimized Levenshtein Class with SIMD and Parallel Processing
 // ============================================================================
 
 #[pyclass]
 pub struct Levenshtein {
-    processor: Arc<UltraFastStringProcessor>,
+    processor: Arc<OptimizedStringProcessor>,
 }
 
 #[pymethods]
@@ -313,22 +477,24 @@ impl Levenshtein {
     #[new]
     pub fn new() -> Self {
         Levenshtein {
-            processor: Arc::new(UltraFastStringProcessor::new()),
+            processor: Arc::new(OptimizedStringProcessor::new()),
         }
     }
 
     #[inline(always)]
     fn preprocess_string(&self, s: &str) -> String {
         let cache = get_cache();
-        cache.get_or_compute(s, || self.processor.fast_process(s))
+        cache.get_or_compute(s, || self.processor.process(s))
     }
 
     pub fn match_string_difference(&self, source: &str, target: &str) -> PyResult<usize> {
         let s_p = self.preprocess_string(source);
         let t_p = self.preprocess_string(target);
-        Ok(simd_levenshtein(&s_p, &t_p))
+        Ok(optimized_levenshtein(&s_p, &t_p))
     }
 
+    // Fixed: Now accepts only 2 positional arguments (self is implicit)
+    #[pyo3(signature = (source, target))]
     pub fn match_string_percentage(&self, source: &str, target: &str) -> PyResult<f64> {
         let s_p = self.preprocess_string(source);
         let t_p = self.preprocess_string(target);
@@ -338,7 +504,7 @@ impl Levenshtein {
             return Ok(1.0);
         }
 
-        let distance = simd_levenshtein(&s_p, &t_p);
+        let distance = optimized_levenshtein(&s_p, &t_p);
         Ok(1.0 - (distance as f64 / max_len as f64))
     }
 
@@ -357,7 +523,7 @@ impl Levenshtein {
             .with_min_len(chunk_size)
             .map(|t| {
                 let t_p = self.preprocess_string(&t);
-                let distance = simd_levenshtein(&s_p, &t_p);
+                let distance = optimized_levenshtein(&s_p, &t_p);
                 (t, distance)
             })
             .collect();
@@ -385,7 +551,7 @@ impl Levenshtein {
                 let similarity = if max_len == 0 {
                     1.0
                 } else {
-                    let distance = simd_levenshtein(&s_p, &t_p);
+                    let distance = optimized_levenshtein(&s_p, &t_p);
                     1.0 - (distance as f64 / max_len as f64)
                 };
 
@@ -406,7 +572,7 @@ impl Levenshtein {
         stats.insert("size".to_string(), size);
         stats.insert("hits".to_string(), hits);
         stats.insert("misses".to_string(), misses);
-        stats.insert("capacity".to_string(), CACHE_SIZE);
+        stats.insert("capacity".to_string(), MAX_CACHE_SIZE);
 
         let hit_rate = if hits + misses > 0 {
             (hits * 100) / (hits + misses)
@@ -420,12 +586,12 @@ impl Levenshtein {
 }
 
 // ============================================================================
-// Ultra-Optimized Damerau Class
+// Optimized Damerau Class with Parallel Processing
 // ============================================================================
 
 #[pyclass]
 pub struct Damerau {
-    processor: Arc<UltraFastStringProcessor>,
+    processor: Arc<OptimizedStringProcessor>,
 }
 
 #[pymethods]
@@ -433,14 +599,14 @@ impl Damerau {
     #[new]
     pub fn new() -> Self {
         Damerau {
-            processor: Arc::new(UltraFastStringProcessor::new()),
+            processor: Arc::new(OptimizedStringProcessor::new()),
         }
     }
 
     #[inline(always)]
     fn process_string(&self, s: &str) -> String {
         let cache = get_cache();
-        cache.get_or_compute(s, || self.processor.fast_process(s))
+        cache.get_or_compute(s, || self.processor.process(s))
     }
 
     pub fn match_string_difference(&self, source: &str, target: &str) -> PyResult<usize> {
@@ -507,18 +673,18 @@ impl Damerau {
         stats.insert("size".to_string(), size);
         stats.insert("hits".to_string(), hits);
         stats.insert("misses".to_string(), misses);
-        stats.insert("capacity".to_string(), CACHE_SIZE);
+        stats.insert("capacity".to_string(), MAX_CACHE_SIZE);
         Ok(stats)
     }
 }
 
 // ============================================================================
-// Ultra-Optimized FuzzyRatio Class
+// Optimized FuzzyRatio Class with SIMD and Parallel Processing
 // ============================================================================
 
 #[pyclass]
 pub struct FuzzyRatio {
-    processor: Arc<UltraFastStringProcessor>,
+    processor: Arc<OptimizedStringProcessor>,
 }
 
 #[pymethods]
@@ -526,14 +692,14 @@ impl FuzzyRatio {
     #[new]
     pub fn new() -> Self {
         FuzzyRatio {
-            processor: Arc::new(UltraFastStringProcessor::new()),
+            processor: Arc::new(OptimizedStringProcessor::new()),
         }
     }
 
     #[inline(always)]
     fn process_string(&self, s: &str) -> String {
         let cache = get_cache();
-        cache.get_or_compute(s, || self.processor.fast_process(s))
+        cache.get_or_compute(s, || self.processor.process(s))
     }
 
     pub fn ratio(&self, s1: &str, s2: &str, score_cutoff: Option<f64>) -> PyResult<f64> {
@@ -625,7 +791,7 @@ impl FuzzyRatio {
     fn sort_tokens(&self, s: &str) -> String {
         let processed = self.process_string(s);
         let mut tokens: Vec<&str> = processed.split_whitespace().collect();
-        tokens.sort_unstable(); // Faster than stable sort
+        tokens.sort_unstable();
         tokens.join(" ")
     }
 
@@ -640,7 +806,7 @@ impl FuzzyRatio {
             return 100.0;
         }
 
-        let distance = simd_levenshtein(s1, s2);
+        let distance = strsim::levenshtein(s1, s2);
         100.0 * (1.0 - (distance as f64 / max_len as f64))
     }
 
@@ -666,15 +832,37 @@ impl FuzzyRatio {
         // Use step size for large strings to reduce computation
         let step = if longer.len() > 1000 { 4 } else { 1 };
 
-        for i in (0..=(longer.len().saturating_sub(shorter_len))).step_by(step) {
-            let end_idx = (i + shorter_len).min(longer.len());
-            let substring = &longer[i..end_idx];
-            let ratio = self.calculate_ratio(shorter, substring);
-            best_ratio = best_ratio.max(ratio);
+        // Parallel processing for large strings
+        if longer.len() > 5000 {
+            let segments: Vec<_> = (0..=(longer.len().saturating_sub(shorter_len)))
+                .step_by(step)
+                .collect();
+            
+            let ratios: Vec<f64> = segments
+                .into_par_iter()
+                .map(|i| {
+                    let end_idx = (i + shorter_len).min(longer.len());
+                    if let Some(substring) = longer.get(i..end_idx) {
+                        self.calculate_ratio(shorter, substring)
+                    } else {
+                        0.0
+                    }
+                })
+                .collect();
+            
+            best_ratio = ratios.into_iter().fold(0.0, f64::max);
+        } else {
+            for i in (0..=(longer.len().saturating_sub(shorter_len))).step_by(step) {
+                let end_idx = (i + shorter_len).min(longer.len());
+                if let Some(substring) = longer.get(i..end_idx) {
+                    let ratio = self.calculate_ratio(shorter, substring);
+                    best_ratio = best_ratio.max(ratio);
 
-            // Early termination for perfect matches
-            if best_ratio >= 100.0 {
-                break;
+                    // Early termination for perfect matches
+                    if best_ratio >= 100.0 {
+                        break;
+                    }
+                }
             }
         }
 
@@ -729,18 +917,18 @@ impl FuzzyRatio {
         if len_ratio < 1.5 {
             ratio.max(partial).max(token_sort).max(token_set)
         } else {
-            (ratio * 0.2 + partial * 0.6 + token_sort * 0.1 + token_set * 0.1)
+            ratio * 0.2 + partial * 0.6 + token_sort * 0.1 + token_set * 0.1
         }
     }
 }
 
 // ============================================================================
-// Ultra-Optimized StringMatcher Class
+// Optimized StringMatcher Class with SIMD and Parallel Processing
 // ============================================================================
 
 #[pyclass]
 pub struct StringMatcher {
-    processor: Arc<UltraFastStringProcessor>,
+    processor: Arc<OptimizedStringProcessor>,
 }
 
 #[pymethods]
@@ -748,21 +936,21 @@ impl StringMatcher {
     #[new]
     pub fn new() -> Self {
         StringMatcher {
-            processor: Arc::new(UltraFastStringProcessor::new()),
+            processor: Arc::new(OptimizedStringProcessor::new()),
         }
     }
 
     #[inline(always)]
     fn process_string_pair(&self, source: &str, target: &str) -> (String, String) {
         let cache = get_cache();
-        let s_p = cache.get_or_compute(source, || self.processor.fast_process(source));
-        let t_p = cache.get_or_compute(target, || self.processor.fast_process(target));
+        let s_p = cache.get_or_compute(source, || self.processor.process(source));
+        let t_p = cache.get_or_compute(target, || self.processor.process(target));
         (s_p, t_p)
     }
 
     pub fn jaro_winkler_difference(&self, source: &str, target: &str) -> f64 {
         let (s_p, t_p) = self.process_string_pair(source, target);
-        jaro_winkler(&s_p, &t_p)
+        strsim_jaro_winkler(&s_p, &t_p)
     }
 
     pub fn jaro_difference(&self, source: &str, target: &str) -> f64 {
@@ -789,17 +977,17 @@ impl StringMatcher {
             return 1.0;
         }
 
-        let distance = simd_levenshtein(&s_p, &t_p);
+        let distance = optimized_levenshtein(&s_p, &t_p);
         1.0 - (distance as f64 / max_len as f64)
     }
 }
 
 // ============================================================================
-// Ultra-Optimized Batch Processing Functions
+// Optimized Batch Processing Functions with SIMD and Parallel Processing
 // ============================================================================
 
 #[pyfunction]
-pub fn ultra_batch_match_percentage(
+pub fn safe_batch_match_percentage(
     sources: Vec<String>,
     targets: Vec<String>,
 ) -> PyResult<Vec<Vec<f64>>> {
@@ -807,18 +995,18 @@ pub fn ultra_batch_match_percentage(
         return Ok(Vec::new());
     }
 
-    let processor = Arc::new(UltraFastStringProcessor::new());
+    let processor = Arc::new(OptimizedStringProcessor::new());
     let cache = get_cache();
 
     // Pre-process all strings in parallel
     let processed_sources: Vec<String> = sources
         .par_iter()
-        .map(|s| cache.get_or_compute(s, || processor.fast_process(s)))
+        .map(|s| cache.get_or_compute(s, || processor.process(s)))
         .collect();
 
     let processed_targets: Vec<String> = targets
         .par_iter()
-        .map(|t| cache.get_or_compute(t, || processor.fast_process(t)))
+        .map(|t| cache.get_or_compute(t, || processor.process(t)))
         .collect();
 
     // Compute similarity matrix in parallel
@@ -827,13 +1015,13 @@ pub fn ultra_batch_match_percentage(
         .map(|s| {
             let s_len = s.len();
             processed_targets
-                .iter()
+                .par_iter()
                 .map(|t| {
                     let max_len = s_len.max(t.len());
                     if max_len == 0 {
                         1.0
                     } else {
-                        let distance = simd_levenshtein(s, t);
+                        let distance = optimized_levenshtein(s, t);
                         1.0 - (distance as f64 / max_len as f64)
                     }
                 })
@@ -844,85 +1032,53 @@ pub fn ultra_batch_match_percentage(
     Ok(results)
 }
 
-#[pyfunction]
-pub fn ultra_streaming_similarity_search(
-    pattern: String,
-    candidates: Vec<String>,
-    threshold: f64,
-) -> PyResult<Vec<(String, f64)>> {
-    let processor = Arc::new(UltraFastStringProcessor::new());
-    let cache = get_cache();
-
-    let pattern_processed =
-        Arc::new(cache.get_or_compute(&pattern, || processor.fast_process(&pattern)));
-    let pattern_len = pattern_processed.len();
-
-    // Use adaptive chunk size based on input size
-    let chunk_size = (candidates.len() / (rayon::current_num_threads() * 4)).max(32);
-
-    let results: Vec<(String, f64)> = candidates
-        .into_par_iter()
-        .with_min_len(chunk_size)
-        .filter_map(|candidate| {
-            let candidate_processed =
-                cache.get_or_compute(&candidate, || processor.fast_process(&candidate));
-
-            let max_len = pattern_len.max(candidate_processed.len());
-            let similarity = if max_len == 0 {
-                1.0
-            } else {
-                let distance = simd_levenshtein(&pattern_processed, &candidate_processed);
-                1.0 - (distance as f64 / max_len as f64)
-            };
-
-            if similarity >= threshold {
-                Some((candidate, similarity))
-            } else {
-                None
-            }
-        })
-        .collect();
-
-    Ok(results)
-}
-
 // ============================================================================
-// Top-level Ultra-Optimized Functions
+// Top-level Optimized Functions with SIMD and Parallel Processing
 // ============================================================================
 
 #[pyfunction]
 pub fn ratio(s1: &str, s2: &str, score_cutoff: Option<f64>) -> PyResult<f64> {
-    let fuzzy_ratio = FuzzyRatio::new();
-    fuzzy_ratio.ratio(s1, s2, score_cutoff)
+    let fuzzy_ratio = string_matcher::FuzzyRatio::new();
+    let result = fuzzy_ratio.ratio(s1, s2, score_cutoff)?;
+    Ok(result.unwrap_or(0.0))
 }
 
 #[pyfunction]
 pub fn partial_ratio(s1: &str, s2: &str, score_cutoff: Option<f64>) -> PyResult<f64> {
-    let fuzzy_ratio = FuzzyRatio::new();
-    fuzzy_ratio.partial_ratio(s1, s2, score_cutoff)
+    let fuzzy_ratio = string_matcher::FuzzyRatio::new();
+    let result = fuzzy_ratio.partial_ratio(s1, s2, score_cutoff)?;
+    Ok(result.unwrap_or(0.0))
 }
 
 #[pyfunction]
 pub fn token_sort_ratio(s1: &str, s2: &str, score_cutoff: Option<f64>) -> PyResult<f64> {
-    let fuzzy_ratio = FuzzyRatio::new();
-    fuzzy_ratio.token_sort_ratio(s1, s2, score_cutoff)
+    let fuzzy_ratio = string_matcher::FuzzyRatio::new();
+    let result = fuzzy_ratio.token_sort_ratio(s1, s2, score_cutoff)?;
+    Ok(result.unwrap_or(0.0))
 }
 
 #[pyfunction]
 pub fn token_set_ratio(s1: &str, s2: &str, score_cutoff: Option<f64>) -> PyResult<f64> {
-    let fuzzy_ratio = FuzzyRatio::new();
-    fuzzy_ratio.token_set_ratio(s1, s2, score_cutoff)
+    let fuzzy_ratio = string_matcher::FuzzyRatio::new();
+    let result = fuzzy_ratio.token_set_ratio(s1, s2, score_cutoff)?;
+    Ok(result.unwrap_or(0.0))
 }
 
 #[pyfunction]
 pub fn wratio(s1: &str, s2: &str, score_cutoff: Option<f64>) -> PyResult<f64> {
-    let fuzzy_ratio = FuzzyRatio::new();
-    fuzzy_ratio.wratio(s1, s2, score_cutoff)
+    let fuzzy_ratio = string_matcher::FuzzyRatio::new();
+    let result = fuzzy_ratio.wratio(s1, s2, score_cutoff)?;
+    Ok(result.unwrap_or(0.0))
 }
 
 #[pyfunction]
 pub fn levenshtein_distance(s1: &str, s2: &str) -> PyResult<usize> {
-    Ok(simd_levenshtein(s1, s2))
+    Ok(optimized_levenshtein(s1, s2))
+}
+
+#[pyfunction]
+pub fn levenshtein(s1: &str, s2: &str) -> PyResult<usize> {
+    Ok(optimized_levenshtein(s1, s2))
 }
 
 #[pyfunction]
@@ -931,103 +1087,114 @@ pub fn normalized_levenshtein_fn(s1: &str, s2: &str) -> PyResult<f64> {
     if max_len == 0 {
         return Ok(1.0);
     }
-    let distance = simd_levenshtein(s1, s2);
+    let distance = strsim::levenshtein(s1, s2);
     Ok(1.0 - (distance as f64 / max_len as f64))
+}
+
+#[pyfunction]
+pub fn normalized_levenshtein(s1: &str, s2: &str) -> PyResult<f64> {
+    normalized_levenshtein_fn(s1, s2)
+}
+
+#[pyfunction]
+pub fn jaro_winkler_distance(s1: &str, s2: &str) -> PyResult<f64> {
+    Ok(strsim_jaro_winkler(s1, s2))
+}
+
+#[pyfunction]
+pub fn jaro_winkler(s1: &str, s2: &str) -> PyResult<f64> {
+    Ok(strsim_jaro_winkler(s1, s2))
 }
 
 #[pyfunction]
 pub fn jaro_winkler_fn(s1: &str, s2: &str) -> PyResult<f64> {
-    Ok(jaro_winkler(s1, s2))
+    Ok(strsim_jaro_winkler(s1, s2))
 }
 
 #[pyfunction]
-pub fn jaro_fn(s1: &str, s2: &str) -> PyResult<f64> {
-    Ok(jaro(s1, s2))
+pub fn jaro_winkler_alt(s1: &str, s2: &str) -> PyResult<f64> {
+    Ok(strsim_jaro_winkler(s1, s2))
 }
 
 #[pyfunction]
-pub fn ultra_match_string_percentage_list(
+pub fn normalized_levenshtein_alt(s1: &str, s2: &str) -> PyResult<f64> {
+    normalized_levenshtein_fn(s1, s2)
+}
+
+#[pyfunction]
+pub fn ratio_alt(s1: &str, s2: &str, score_cutoff: Option<f64>) -> PyResult<f64> {
+    ratio(s1, s2, score_cutoff)
+}
+
+#[pyfunction]
+pub fn quick_ratio(s1: &str, s2: &str) -> PyResult<f64> {
+    // Quick ratio using simple character count comparison
+    if s1.is_empty() && s2.is_empty() {
+        return Ok(100.0);
+    }
+
+    let len1 = s1.len();
+    let len2 = s2.len();
+    let max_len = len1.max(len2);
+
+    if max_len == 0 {
+        return Ok(100.0);
+    }
+
+    // Quick approximation based on length difference
+    let len_diff = (len1 as i32 - len2 as i32).abs() as f64;
+    Ok(100.0 * (1.0 - len_diff / max_len as f64))
+}
+
+#[pyfunction]
+pub fn match_string_percentage_fn(source: &str, target: &str) -> PyResult<f64> {
+    normalized_levenshtein_fn(source, target)
+}
+
+#[pyfunction]
+pub fn match_string_percentage_list_fn(
     source: &str,
-    target: Vec<String>,
+    targets: Vec<String>,
 ) -> PyResult<HashMap<String, f64>> {
-    let processor = Arc::new(UltraFastStringProcessor::new());
-    let cache = get_cache();
-
-    let s_p = Arc::new(cache.get_or_compute(source, || processor.fast_process(source)));
-    let s_len = s_p.len();
-
-    let chunk_size = (target.len() / rayon::current_num_threads()).max(64);
-
-    let results: HashMap<String, f64> = target
-        .into_par_iter()
-        .with_min_len(chunk_size)
-        .map(|t| {
-            let t_p = cache.get_or_compute(&t, || processor.fast_process(&t));
-            let max_len = s_len.max(t_p.len());
-
-            let similarity = if max_len == 0 {
-                1.0
-            } else {
-                let distance = simd_levenshtein(&s_p, &t_p);
-                1.0 - (distance as f64 / max_len as f64)
-            };
-
-            (t, similarity)
-        })
-        .collect();
-
+    let mut results = HashMap::new();
+    for target in targets {
+        let score = normalized_levenshtein_fn(source, &target)?;
+        results.insert(target, score);
+    }
     Ok(results)
 }
 
 #[pyfunction]
-pub fn ultra_match_string_percentage(source: &str, target: &str) -> PyResult<f64> {
-    let max_len = source.len().max(target.len());
-    if max_len == 0 {
-        return Ok(1.0);
-    }
-    let distance = simd_levenshtein(source, target);
-    Ok(1.0 - (distance as f64 / max_len as f64))
+pub fn batch_match_percentage(
+    sources: Vec<String>,
+    targets: Vec<String>,
+) -> PyResult<Vec<Vec<f64>>> {
+    safe_batch_match_percentage(sources, targets)
 }
 
-// ============================================================================
-// Ultra-Optimized Batch Functions
-// ============================================================================
-
 #[pyfunction]
-pub fn ultra_batch_ratio(queries: Vec<String>, targets: Vec<String>) -> PyResult<Vec<Vec<f64>>> {
-    let processor = Arc::new(UltraFastStringProcessor::new());
+pub fn batch_ratio(queries: Vec<String>, targets: Vec<String>) -> PyResult<Vec<Vec<f64>>> {
+    let fuzzy_ratio = FuzzyRatio::new();
+    let processor = Arc::new(OptimizedStringProcessor::new());
     let cache = get_cache();
 
     // Pre-process all strings
     let processed_queries: Vec<String> = queries
         .par_iter()
-        .map(|q| cache.get_or_compute(q, || processor.fast_process(q)))
+        .map(|q| cache.get_or_compute(q, || processor.process(q)))
         .collect();
 
     let processed_targets: Vec<String> = targets
         .par_iter()
-        .map(|t| cache.get_or_compute(t, || processor.fast_process(t)))
+        .map(|t| cache.get_or_compute(t, || processor.process(t)))
         .collect();
 
     let results: Vec<Vec<f64>> = processed_queries
         .par_iter()
         .map(|query| {
-            let query_len = query.len();
             processed_targets
-                .iter()
-                .map(|target| {
-                    if query.is_empty() && target.is_empty() {
-                        return 100.0;
-                    }
-
-                    let max_len = query_len.max(target.len());
-                    if max_len == 0 {
-                        return 100.0;
-                    }
-
-                    let distance = simd_levenshtein(query, target);
-                    100.0 * (1.0 - distance as f64 / max_len as f64)
-                })
+                .par_iter()
+                .map(|target| fuzzy_ratio.calculate_ratio(query, target))
                 .collect()
         })
         .collect();
@@ -1036,232 +1203,93 @@ pub fn ultra_batch_ratio(queries: Vec<String>, targets: Vec<String>) -> PyResult
 }
 
 #[pyfunction]
-pub fn ultra_batch_levenshtein(
-    queries: Vec<String>,
-    targets: Vec<String>,
-) -> PyResult<Vec<Vec<usize>>> {
+pub fn batch_levenshtein(queries: Vec<String>, targets: Vec<String>) -> PyResult<Vec<Vec<usize>>> {
     let results: Vec<Vec<usize>> = queries
         .par_iter()
         .map(|query| {
             targets
-                .iter()
-                .map(|target| simd_levenshtein(query, target))
+                .par_iter()
+                .map(|target| optimized_levenshtein(query, target))
                 .collect()
         })
         .collect();
     Ok(results)
 }
 
-// ============================================================================
-// Memory-Optimized Thread Processing
-// ============================================================================
-
-pub fn ultra_thread_process(
-    source_string: String,
-    target_string: Vec<String>,
-) -> HashMap<String, f64> {
-    let processor = Arc::new(UltraFastStringProcessor::new());
-    let cache = get_cache();
-
-    let source_processed =
-        Arc::new(cache.get_or_compute(&source_string, || processor.fast_process(&source_string)));
-    let source_len = source_processed.len();
-
-    target_string
-        .into_par_iter()
-        .with_min_len(64) // Optimal chunk size
-        .map(|target| {
-            let target_processed =
-                cache.get_or_compute(&target, || processor.fast_process(&target));
-
-            let max_len = source_len.max(target_processed.len());
-            let score = if max_len == 0 {
-                1.0
-            } else {
-                let distance = simd_levenshtein(&source_processed, &target_processed);
-                1.0 - (distance as f64 / max_len as f64)
-            };
-
-            (target, score)
-        })
-        .collect()
-}
-
-// ============================================================================
-// Additional Ultra-Fast Utility Functions
-// ============================================================================
-
 #[pyfunction]
-pub fn ultra_quick_ratio(s1: &str, s2: &str) -> PyResult<f64> {
-    if s1.is_empty() && s2.is_empty() {
-        return Ok(100.0);
-    }
-
-    let max_len = s1.len().max(s2.len());
-    if max_len == 0 {
-        return Ok(100.0);
-    }
-
-    let distance = simd_levenshtein(s1, s2);
-    Ok(100.0 * (1.0 - distance as f64 / max_len as f64))
-}
-
-#[pyfunction]
-pub fn ultra_batch_quick_ratio(
-    queries: Vec<String>,
-    targets: Vec<String>,
-) -> PyResult<Vec<Vec<f64>>> {
+pub fn batch_quick_ratio(queries: Vec<String>, targets: Vec<String>) -> PyResult<Vec<Vec<f64>>> {
     let results: Vec<Vec<f64>> = queries
         .par_iter()
         .map(|query| {
-            let query_len = query.len();
             targets
-                .iter()
-                .map(|target| {
-                    if query.is_empty() && target.is_empty() {
-                        return 100.0;
-                    }
-
-                    let max_len = query_len.max(target.len());
-                    if max_len == 0 {
-                        return 100.0;
-                    }
-
-                    let distance = simd_levenshtein(query, target);
-                    100.0 * (1.0 - distance as f64 / max_len as f64)
-                })
+                .par_iter()
+                .map(|target| quick_ratio(query, target).unwrap_or(0.0))
                 .collect()
         })
         .collect();
-
     Ok(results)
 }
 
-// ============================================================================
-// Alternative Ultra-Fast Functions for Compatibility
-// ============================================================================
-
+// Wrapper functions to match the expected interface for benchmark compatibility
 #[pyfunction]
-pub fn normalized_levenshtein_direct(s1: &str, s2: &str) -> PyResult<f64> {
-    let max_len = s1.len().max(s2.len());
-    if max_len == 0 {
-        return Ok(1.0);
-    }
-    let distance = simd_levenshtein(s1, s2);
-    Ok(1.0 - (distance as f64 / max_len as f64))
+#[pyo3(signature = (query, choices, limit=5))]
+pub fn extract(query: &str, choices: Vec<String>, limit: Option<usize>) -> PyResult<Vec<(String, f64, usize)>> {
+    let process = string_matcher::Process::new();
+    process.extract(query, choices, limit, Some(0.0), Some("ratio"))
 }
 
 #[pyfunction]
-pub fn levenshtein_distance_alt(s1: &str, s2: &str) -> PyResult<usize> {
-    Ok(simd_levenshtein(s1, s2))
-}
-
-#[pyfunction]
-pub fn jaro_winkler_alt(s1: &str, s2: &str) -> PyResult<f64> {
-    Ok(jaro_winkler(s1, s2))
-}
-
-#[pyfunction]
-pub fn normalized_levenshtein_alt(s1: &str, s2: &str) -> PyResult<f64> {
-    let max_len = s1.len().max(s2.len());
-    if max_len == 0 {
-        return Ok(1.0);
-    }
-    let distance = simd_levenshtein(s1, s2);
-    Ok(1.0 - (distance as f64 / max_len as f64))
-}
-
-#[pyfunction]
-pub fn ratio_alt(s1: &str, s2: &str, score_cutoff: Option<f64>) -> PyResult<f64> {
-    let fuzzy_ratio = FuzzyRatio::new();
-    fuzzy_ratio.ratio(s1, s2, score_cutoff)
+pub fn extract_one(query: &str, choices: Vec<String>) -> PyResult<Option<(String, f64, usize)>> {
+    let process = string_matcher::Process::new();
+    process.extract_one(query, choices, Some(0.0), Some("ratio"))
 }
 
 // ============================================================================
-// Memory Pool for Large Operations
-// ============================================================================
-
-use std::sync::Mutex;
-
-struct MemoryPool {
-    vectors: Mutex<Vec<Vec<u32>>>,
-}
-
-impl MemoryPool {
-    fn new() -> Self {
-        Self {
-            vectors: Mutex::new(Vec::new()),
-        }
-    }
-
-    fn get_vector(&self, size: usize) -> Vec<u32> {
-        if let Ok(mut pool) = self.vectors.lock() {
-            if let Some(mut vec) = pool.pop() {
-                vec.clear();
-                vec.resize(size, 0);
-                return vec;
-            }
-        }
-        vec![0; size]
-    }
-
-    fn return_vector(&self, vec: Vec<u32>) {
-        if let Ok(mut pool) = self.vectors.lock() {
-            if pool.len() < 100 {
-                // Limit pool size
-                pool.push(vec);
-            }
-        }
-    }
-}
-
-static MEMORY_POOL: std::sync::OnceLock<MemoryPool> = std::sync::OnceLock::new();
-
-fn get_memory_pool() -> &'static MemoryPool {
-    MEMORY_POOL.get_or_init(|| MemoryPool::new())
-}
-
-// ============================================================================
-// Module Registration with All Optimizations
+// Module Registration
 // ============================================================================
 
 #[pymodule]
-fn fast_fuzzy(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    // Add ultra-optimized classes
+fn fastfuzzy(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    // Add optimized classes
     m.add_class::<Levenshtein>()?;
     m.add_class::<Damerau>()?;
     m.add_class::<FuzzyRatio>()?;
     m.add_class::<StringMatcher>()?;
 
-    // Add ultra-fast top-level functions
+    // Add optimized top-level functions
     m.add_function(wrap_pyfunction!(ratio, m)?)?;
     m.add_function(wrap_pyfunction!(partial_ratio, m)?)?;
     m.add_function(wrap_pyfunction!(token_sort_ratio, m)?)?;
     m.add_function(wrap_pyfunction!(token_set_ratio, m)?)?;
     m.add_function(wrap_pyfunction!(wratio, m)?)?;
 
-    // Add ultra-fast distance functions
+    // Add optimized distance functions with multiple aliases
     m.add_function(wrap_pyfunction!(levenshtein_distance, m)?)?;
+    m.add_function(wrap_pyfunction!(levenshtein, m)?)?;
     m.add_function(wrap_pyfunction!(normalized_levenshtein_fn, m)?)?;
+    m.add_function(wrap_pyfunction!(normalized_levenshtein, m)?)?;
+    m.add_function(wrap_pyfunction!(jaro_winkler, m)?)?;
+    m.add_function(wrap_pyfunction!(jaro_winkler_distance, m)?)?;
     m.add_function(wrap_pyfunction!(jaro_winkler_fn, m)?)?;
-    m.add_function(wrap_pyfunction!(jaro_fn, m)?)?;
-
-    // Add ultra-optimized batch functions
-    m.add_function(wrap_pyfunction!(ultra_batch_match_percentage, m)?)?;
-    m.add_function(wrap_pyfunction!(ultra_streaming_similarity_search, m)?)?;
-    m.add_function(wrap_pyfunction!(ultra_match_string_percentage_list, m)?)?;
-    m.add_function(wrap_pyfunction!(ultra_match_string_percentage, m)?)?;
-    m.add_function(wrap_pyfunction!(ultra_batch_ratio, m)?)?;
-    m.add_function(wrap_pyfunction!(ultra_batch_levenshtein, m)?)?;
-    m.add_function(wrap_pyfunction!(ultra_quick_ratio, m)?)?;
-    m.add_function(wrap_pyfunction!(ultra_batch_quick_ratio, m)?)?;
-
-    // Add alternative functions for compatibility
-    m.add_function(wrap_pyfunction!(normalized_levenshtein_direct, m)?)?;
-    m.add_function(wrap_pyfunction!(levenshtein_distance_alt, m)?)?;
     m.add_function(wrap_pyfunction!(jaro_winkler_alt, m)?)?;
     m.add_function(wrap_pyfunction!(normalized_levenshtein_alt, m)?)?;
     m.add_function(wrap_pyfunction!(ratio_alt, m)?)?;
+    m.add_function(wrap_pyfunction!(quick_ratio, m)?)?;
+
+    // Add additional utility functions
+    m.add_function(wrap_pyfunction!(match_string_percentage_fn, m)?)?;
+    m.add_function(wrap_pyfunction!(match_string_percentage_list_fn, m)?)?;
+
+    // Add optimized batch functions
+    m.add_function(wrap_pyfunction!(safe_batch_match_percentage, m)?)?;
+    m.add_function(wrap_pyfunction!(batch_match_percentage, m)?)?;
+    m.add_function(wrap_pyfunction!(batch_ratio, m)?)?;
+    m.add_function(wrap_pyfunction!(batch_levenshtein, m)?)?;
+    m.add_function(wrap_pyfunction!(batch_quick_ratio, m)?)?;
+
+    // Add wrapper functions for benchmark compatibility
+    m.add_function(wrap_pyfunction!(extract, m)?)?;
+    m.add_function(wrap_pyfunction!(extract_one, m)?)?;
 
     // Add string_matcher classes if available
     m.add_class::<string_matcher::FuzzyRatio>()?;
@@ -1285,7 +1313,7 @@ fn fast_fuzzy(m: &Bound<'_, PyModule>) -> PyResult<()> {
         stats.insert("size".to_string(), size);
         stats.insert("hits".to_string(), hits);
         stats.insert("misses".to_string(), misses);
-        stats.insert("capacity".to_string(), CACHE_SIZE);
+        stats.insert("capacity".to_string(), MAX_CACHE_SIZE);
 
         let hit_rate = if hits + misses > 0 {
             (hits * 100) / (hits + misses)
@@ -1298,37 +1326,17 @@ fn fast_fuzzy(m: &Bound<'_, PyModule>) -> PyResult<()> {
     }
 
     // Create optimized instances for compatibility
-    let fuzz_class = FuzzyRatio::new();
+    let fuzz_class = Py::new(m.py(), FuzzyRatio::new())?;
     m.add("fuzz", fuzz_class)?;
 
-    let process_class = string_matcher::Process::new();
+    let process_class = Py::new(m.py(), string_matcher::Process::new())?;
     m.add("process", process_class)?;
 
-    let utils_class = string_matcher::Utils::new();
+    let utils_class = Py::new(m.py(), string_matcher::Utils::new())?;
     m.add("utils", utils_class)?;
 
-    let string_matcher_class = StringMatcher::new();
+    let string_matcher_class = Py::new(m.py(), StringMatcher::new())?;
     m.add("string_metric", string_matcher_class)?;
-
-    // Add all function aliases for maximum compatibility
-    let ratio_fn = m.getattr("ratio")?;
-    m.add("fuzz_ratio", ratio_fn)?;
-
-    let partial_ratio_fn = m.getattr("partial_ratio")?;
-    m.add("fuzz_partial_ratio", partial_ratio_fn)?;
-
-    let levenshtein_fn = m.getattr("levenshtein_distance")?;
-    m.add("levenshtein", levenshtein_fn.clone())?;
-
-    let jaro_winkler_fn = m.getattr("jaro_winkler_fn")?;
-    m.add("jaro_winkler", jaro_winkler_fn.clone())?;
-    m.add("jaro_winkler_distance", jaro_winkler_fn)?;
-
-    let normalized_levenshtein_fn = m.getattr("normalized_levenshtein_fn")?;
-    m.add("normalized_levenshtein", normalized_levenshtein_fn.clone())?;
-    m.add("normalized_levenshtein_distance", normalized_levenshtein_fn)?;
-
-    m.add("levenshtein_distance", levenshtein_fn)?;
 
     Ok(())
 }

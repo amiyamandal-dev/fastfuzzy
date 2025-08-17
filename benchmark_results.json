@@ -1,0 +1,405 @@
+{
+  "benchmark_info": {
+    "size": 1000,
+    "iterations": 3,
+    "timestamp": 1755434204.614364
+  },
+  "results": [
+    {
+      "name": "fastfuzzy_ratio",
+      "library": "fastfuzzy",
+      "operation": "ratio",
+      "mean_time": 0.0005414860012630621,
+      "std_time": 1.535972524206088e-05,
+      "min_time": 0.0005263750208541751,
+      "max_time": 0.0005570829380303621,
+      "operations_per_second": 184676.98106089816,
+      "relative_speed": 0.07687171581342911,
+      "times": [
+        0.0005410000449046493,
+        0.0005263750208541751,
+        0.0005570829380303621
+      ]
+    },
+    {
+      "name": "fastfuzzy_partial_ratio",
+      "library": "fastfuzzy",
+      "operation": "partial_ratio",
+      "mean_time": 0.0004705276805907488,
+      "std_time": 2.3365593268663465e-05,
+      "min_time": 0.00044362503103911877,
+      "max_time": 0.00048575003165751696,
+      "operations_per_second": 212527.34775231444,
+      "relative_speed": 0.36085315411294266,
+      "times": [
+        0.00048220797907561064,
+        0.00044362503103911877,
+        0.00048575003165751696
+      ]
+    },
+    {
+      "name": "fastfuzzy_token_sort_ratio",
+      "library": "fastfuzzy",
+      "operation": "token_sort_ratio",
+      "mean_time": 0.000470875296741724,
+      "std_time": 3.088105640160545e-05,
+      "min_time": 0.00043795898091048,
+      "max_time": 0.0004992089234292507,
+      "operations_per_second": 212370.4528395555,
+      "relative_speed": 0.12851320431791893,
+      "times": [
+        0.0004992089234292507,
+        0.00043795898091048,
+        0.0004754579858854413
+      ]
+    },
+    {
+      "name": "fastfuzzy_levenshtein",
+      "library": "fastfuzzy",
+      "operation": "levenshtein",
+      "mean_time": 0.00023125038327028355,
+      "std_time": 2.1590488391170467e-05,
+      "min_time": 0.00021245807874947786,
+      "max_time": 0.0002548340708017349,
+      "operations_per_second": 432431.71572658897,
+      "relative_speed": 0.10342479465210291,
+      "times": [
+        0.00021245807874947786,
+        0.00022645900025963783,
+        0.0002548340708017349
+      ]
+    },
+    {
+      "name": "fastfuzzy_jaro_winkler",
+      "library": "fastfuzzy",
+      "operation": "jaro_winkler",
+      "mean_time": 8.209697746982177e-05,
+      "std_time": 2.4762459430207595e-06,
+      "min_time": 7.924996316432953e-05,
+      "max_time": 8.37499974295497e-05,
+      "operations_per_second": 1218071.6401740764,
+      "relative_speed": 0.571137674339899,
+      "times": [
+        8.37499974295497e-05,
+        7.924996316432953e-05,
+        8.329097181558609e-05
+      ]
+    },
+    {
+      "name": "RapidFuzz_ratio",
+      "library": "RapidFuzz",
+      "operation": "ratio",
+      "mean_time": 4.162495800604423e-05,
+      "std_time": 3.2292172684233215e-06,
+      "min_time": 3.837491385638714e-05,
+      "max_time": 4.483293741941452e-05,
+      "operations_per_second": 2402404.82610167,
+      "relative_speed": 1.0,
+      "times": [
+        3.837491385638714e-05,
+        4.166702274233103e-05,
+        4.483293741941452e-05
+      ]
+    },
+    {
+      "name": "RapidFuzz_partial_ratio",
+      "library": "RapidFuzz",
+      "operation": "partial_ratio",
+      "mean_time": 0.00016979139763861895,
+      "std_time": 1.619560275099282e-05,
+      "min_time": 0.00015454203821718693,
+      "max_time": 0.00018679106142371893,
+      "operations_per_second": 588957.9883949024,
+      "relative_speed": 1.0,
+      "times": [
+        0.00018679106142371893,
+        0.00016804109327495098,
+        0.00015454203821718693
+      ]
+    },
+    {
+      "name": "RapidFuzz_token_sort_ratio",
+      "library": "RapidFuzz",
+      "operation": "token_sort_ratio",
+      "mean_time": 6.0513693218429886e-05,
+      "std_time": 1.6468251176649221e-06,
+      "min_time": 5.9125013649463654e-05,
+      "max_time": 6.23330706730485e-05,
+      "operations_per_second": 1652518.5405399166,
+      "relative_speed": 1.0,
+      "times": [
+        6.23330706730485e-05,
+        6.00829953327775e-05,
+        5.9125013649463654e-05
+      ]
+    },
+    {
+      "name": "RapidFuzz_levenshtein",
+      "library": "RapidFuzz",
+      "operation": "levenshtein",
+      "mean_time": 2.3917023402949173e-05,
+      "std_time": 2.367520807211839e-06,
+      "min_time": 2.1417043171823025e-05,
+      "max_time": 2.6124995201826096e-05,
+      "operations_per_second": 4181122.304193972,
+      "relative_speed": 1.0,
+      "times": [
+        2.1417043171823025e-05,
+        2.4209031835198402e-05,
+        2.6124995201826096e-05
+      ]
+    },
+    {
+      "name": "RapidFuzz_jaro_winkler",
+      "library": "RapidFuzz",
+      "operation": "jaro_winkler",
+      "mean_time": 5.1027978770434856e-05,
+      "std_time": 5.098848289896261e-06,
+      "min_time": 4.5208027586340904e-05,
+      "max_time": 5.470891483128071e-05,
+      "operations_per_second": 1959709.2107034246,
+      "relative_speed": 0.9188817176826131,
+      "times": [
+        5.316699389368296e-05,
+        5.470891483128071e-05,
+        4.5208027586340904e-05
+      ]
+    },
+    {
+      "name": "FuzzyWuzzy_ratio",
+      "library": "FuzzyWuzzy",
+      "operation": "ratio",
+      "mean_time": 9.040266741067171e-05,
+      "std_time": 4.80527129620845e-06,
+      "min_time": 8.625001646578312e-05,
+      "max_time": 9.566603694111109e-05,
+      "operations_per_second": 1106162.051012616,
+      "relative_speed": 0.46043948921279887,
+      "times": [
+        9.566603694111109e-05,
+        8.929194882512093e-05,
+        8.625001646578312e-05
+      ]
+    },
+    {
+      "name": "FuzzyWuzzy_partial_ratio",
+      "library": "FuzzyWuzzy",
+      "operation": "partial_ratio",
+      "mean_time": 0.0006810833001509309,
+      "std_time": 1.2130200212973142e-05,
+      "min_time": 0.0006702089449390769,
+      "max_time": 0.00069416593760252,
+      "operations_per_second": 146824.9184465976,
+      "relative_speed": 0.24929608111224053,
+      "times": [
+        0.0006788750179111958,
+        0.00069416593760252,
+        0.0006702089449390769
+      ]
+    },
+    {
+      "name": "FuzzyWuzzy_token_sort_ratio",
+      "library": "FuzzyWuzzy",
+      "operation": "token_sort_ratio",
+      "mean_time": 0.0004859723461170991,
+      "std_time": 3.530452303741596e-06,
+      "min_time": 0.00048204208724200726,
+      "max_time": 0.0004888749681413174,
+      "operations_per_second": 205773.02556204333,
+      "relative_speed": 0.1245208574148962,
+      "times": [
+        0.00048699998296797276,
+        0.0004888749681413174,
+        0.00048204208724200726
+      ]
+    },
+    {
+      "name": "python-Levenshtein_distance",
+      "library": "python-Levenshtein",
+      "operation": "distance",
+      "mean_time": 2.448633313179016e-05,
+      "std_time": 1.6828163959273122e-07,
+      "min_time": 2.433406189084053e-05,
+      "max_time": 2.4667009711265564e-05,
+      "operations_per_second": 4083910.786551042,
+      "relative_speed": 1.0,
+      "times": [
+        2.4667009711265564e-05,
+        2.445792779326439e-05,
+        2.433406189084053e-05
+      ]
+    },
+    {
+      "name": "python-Levenshtein_ratio",
+      "library": "python-Levenshtein",
+      "operation": "ratio",
+      "mean_time": 4.1805983831485115e-05,
+      "std_time": 2.0547621996202014e-07,
+      "min_time": 4.16669063270092e-05,
+      "max_time": 4.2041996493935585e-05,
+      "operations_per_second": 2392002.0732698925,
+      "relative_speed": 0.9956698585023,
+      "times": [
+        4.2041996493935585e-05,
+        4.16669063270092e-05,
+        4.170904867351055e-05
+      ]
+    },
+    {
+      "name": "python-Levenshtein_jaro_winkler",
+      "library": "python-Levenshtein",
+      "operation": "jaro_winkler",
+      "mean_time": 4.688867678244909e-05,
+      "std_time": 3.644291670539756e-07,
+      "min_time": 4.658300895243883e-05,
+      "max_time": 4.7291978262364864e-05,
+      "operations_per_second": 2132711.069326465,
+      "relative_speed": 1.0,
+      "times": [
+        4.7291978262364864e-05,
+        4.6791043132543564e-05,
+        4.658300895243883e-05
+      ]
+    },
+    {
+      "name": "fastfuzzy_batch_ratio",
+      "library": "fastfuzzy",
+      "operation": "batch_ratio",
+      "mean_time": 0.0019293340155854821,
+      "std_time": 0.0,
+      "min_time": 0.0019293340155854821,
+      "max_time": 0.0019293340155854821,
+      "operations_per_second": 4664822.123746587,
+      "relative_speed": 1.0,
+      "times": [
+        0.0019293340155854821
+      ]
+    },
+    {
+      "name": "fastfuzzy_batch_levenshtein",
+      "library": "fastfuzzy",
+      "operation": "batch_levenshtein",
+      "mean_time": 0.0023034170735627413,
+      "std_time": 0.0,
+      "min_time": 0.0023034170735627413,
+      "max_time": 0.0023034170735627413,
+      "operations_per_second": 3907238.555838053,
+      "relative_speed": 1.0,
+      "times": [
+        0.0023034170735627413
+      ]
+    },
+    {
+      "name": "RapidFuzz_cdist_ratio",
+      "library": "RapidFuzz",
+      "operation": "cdist_ratio",
+      "mean_time": 0.00031320902053266764,
+      "std_time": 0.0,
+      "min_time": 0.00031320902053266764,
+      "max_time": 0.00031320902053266764,
+      "operations_per_second": 28734804.587345216,
+      "relative_speed": 1.0,
+      "times": [
+        0.00031320902053266764
+      ]
+    },
+    {
+      "name": "RapidFuzz_cdist_levenshtein",
+      "library": "RapidFuzz",
+      "operation": "cdist_levenshtein",
+      "mean_time": 0.001085457974113524,
+      "std_time": 0.0,
+      "min_time": 0.001085457974113524,
+      "max_time": 0.001085457974113524,
+      "operations_per_second": 8291431.0960312905,
+      "relative_speed": 1.0,
+      "times": [
+        0.001085457974113524
+      ]
+    },
+    {
+      "name": "fastfuzzy_extract",
+      "library": "fastfuzzy",
+      "operation": "extract",
+      "mean_time": 0.014213291928172112,
+      "std_time": 0.0,
+      "min_time": 0.014213291928172112,
+      "max_time": 0.014213291928172112,
+      "operations_per_second": 1266420.199554353,
+      "relative_speed": 1.0,
+      "times": [
+        0.014213291928172112
+      ]
+    },
+    {
+      "name": "fastfuzzy_extractOne",
+      "library": "fastfuzzy",
+      "operation": "extractOne",
+      "mean_time": 0.01469900005031377,
+      "std_time": 0.0,
+      "min_time": 0.01469900005031377,
+      "max_time": 0.01469900005031377,
+      "operations_per_second": 1224573.0960192606,
+      "relative_speed": 1.0,
+      "times": [
+        0.01469900005031377
+      ]
+    },
+    {
+      "name": "RapidFuzz_extract",
+      "library": "RapidFuzz",
+      "operation": "extract",
+      "mean_time": 0.02197337499819696,
+      "std_time": 0.0,
+      "min_time": 0.02197337499819696,
+      "max_time": 0.02197337499819696,
+      "operations_per_second": 819173.2040015247,
+      "relative_speed": 0.6468415493449865,
+      "times": [
+        0.02197337499819696
+      ]
+    },
+    {
+      "name": "RapidFuzz_extractOne",
+      "library": "RapidFuzz",
+      "operation": "extractOne",
+      "mean_time": 0.01635304105002433,
+      "std_time": 0.0,
+      "min_time": 0.01635304105002433,
+      "max_time": 0.01635304105002433,
+      "operations_per_second": 1100712.7019945455,
+      "relative_speed": 0.8988542256666017,
+      "times": [
+        0.01635304105002433
+      ]
+    },
+    {
+      "name": "FuzzyWuzzy_extract",
+      "library": "FuzzyWuzzy",
+      "operation": "extract",
+      "mean_time": 0.3054212919669226,
+      "std_time": 0.0,
+      "min_time": 0.3054212919669226,
+      "max_time": 0.3054212919669226,
+      "operations_per_second": 58934.987420423255,
+      "relative_speed": 0.04653667672164593,
+      "times": [
+        0.3054212919669226
+      ]
+    },
+    {
+      "name": "FuzzyWuzzy_extractOne",
+      "library": "FuzzyWuzzy",
+      "operation": "extractOne",
+      "mean_time": 0.3173376669874415,
+      "std_time": 0.0,
+      "min_time": 0.3173376669874415,
+      "max_time": 0.3173376669874415,
+      "operations_per_second": 56721.9144543353,
+      "relative_speed": 0.04631974574545378,
+      "times": [
+        0.3173376669874415
+      ]
+    }
+  ]
+}

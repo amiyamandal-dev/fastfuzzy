@@ -1,14 +1,15 @@
 [package]
-name = "fast_fuzzy"
+name = "fastfuzzy"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
-name = "fast_fuzzy"
+name = "fastfuzzy"
 crate-type = ["cdylib"]
 
 [dependencies]
+dashmap = "5.5"
 pyo3 = { version = "0.25.1", features = ["extension-module"] }
 strsim = "0.11.1"
 regex = "1.4.2"
@@ -20,4 +21,3 @@ ahash = "0.8"                                                  # Faster hashing
 smallvec = "1.11"                                              # Stack-allocated vectors
 once_cell = "1.19"                                             # Thread-safe lazy statics
 parking_lot = "0.12"                                           # Faster mutexes
-dashmap = "5.5"
